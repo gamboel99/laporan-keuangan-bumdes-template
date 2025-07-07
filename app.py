@@ -6,9 +6,8 @@ from datetime import datetime
 st.set_page_config(page_title="Laporan Keuangan BUMDes", layout="wide")
 
 # === Logo dan Identitas ===
-st.sidebar.image("https://upload.wikimedia.org/wikipedia/commons/9/99/Logo_Pemdes_Keling.png", width=100, caption="Pemerintah Desa Keling")
-st.sidebar.image("https://upload.wikimedia.org/wikipedia/commons/thumb/f/f2/Logo_Bumdes_Keling.png/1200px-Logo_Bumdes_Keling.png", width=100, caption="BUMDes")
-
+st.sidebar.image("Logo_Pemdes_Keling.png", width=120, caption="Pemerintah Desa Keling")
+st.sidebar.image("Logo_Bumdes_Keling.png", width=120, caption="BUMDes Buwana Raharja")
 st.sidebar.title("Identitas Lembaga")
 desa = st.sidebar.text_input("Nama Desa", "Keling")
 lembaga = st.sidebar.selectbox("Lembaga", ["BUMDes", "PKK", "Karang Taruna", "LPMD", "Posyandu", "Lainnya"])
