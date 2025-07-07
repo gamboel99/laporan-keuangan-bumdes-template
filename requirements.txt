@@ -2,3 +2,7 @@ streamlit
 pandas
 pdfkit
 jinja2
+streamlit
+pandas
+xhtml2pdf
+matplotlib
