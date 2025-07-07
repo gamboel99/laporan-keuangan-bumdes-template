@@ -126,4 +126,3 @@ def download_excel(df, filename):
     return href
 
 st.markdown(download_excel(gl_df, f"General_Ledger_{lembaga}_{desa}_{tahun}.xlsx"), unsafe_allow_html=True)
-)
