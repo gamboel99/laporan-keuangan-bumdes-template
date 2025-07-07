@@ -1,149 +1,166 @@
 import streamlit as st
 import pandas as pd
 import base64
+from datetime import datetime
 
-st.set_page_config(page_title="Laporan Keuangan BUMDes", layout="wide")
+st.set_page_config(page_title="Laporan Keuangan BUMDes - Terintegrasi", layout="wide")
 
-# Identitas
+# Sidebar Identitas
 st.sidebar.title("Identitas BUMDes")
 nama_bumdes = st.sidebar.text_input("Nama BUMDes", "Buwana Raharja")
 desa = st.sidebar.text_input("Desa", "Keling")
-tahun = st.sidebar.number_input("Tahun", 2025, step=1)
+tahun = st.sidebar.number_input("Tahun Laporan", 2025, step=1)
 
-st.title("📊 Laporan Keuangan BUMDes (Terintegrasi)")
+st.title("📚 General Ledger (Buku Besar) BUMDes")
 
-# Akun default
-akun_default = {
-    "Laporan Laba Rugi": [
-        ("Pendapatan Usaha", "Pendapatan"),
-        ("Beban Operasional", "Beban"),
-        ("Beban Administrasi", "Beban")
-    ],
-    "Laporan Perubahan Ekuitas": [
-        ("Modal Awal", "Ekuitas"),
-        ("Laba Tahun Berjalan", "Ekuitas"),
-        ("Penambahan Modal", "Ekuitas"),
-        ("Pengambilan Prive", "Ekuitas"),
-        ("Modal Akhir", "Ekuitas (Hitung Otomatis)")
-    ],
-    "Laporan Arus Kas": [
-        ("Kas dari Aktivitas Operasi", "Operasi"),
-        ("Kas dari Aktivitas Investasi", "Investasi"),
-        ("Kas dari Aktivitas Pendanaan", "Pendanaan"),
-        ("Kenaikan/Penurunan Kas", "Total (Otomatis)"),
-        ("Kas Akhir", "Total (Otomatis)")
-    ],
-    "Laporan Posisi Keuangan": [
-        ("Kas", "Aset"),
-        ("Piutang", "Aset"),
-        ("Peralatan", "Aset"),
-        ("Utang Usaha", "Kewajiban"),
-        ("Modal Akhir", "Ekuitas (Otomatis)")
-    ]
-}
+# Inisialisasi Data GL
+if "gl" not in st.session_state:
+    st.session_state.gl = pd.DataFrame(columns=["Tanggal", "Akun", "Debit", "Kredit", "Keterangan"])
 
-# Inisialisasi data
-if "data" not in st.session_state:
-    st.session_state.data = {}
-    for laporan, akun_list in akun_default.items():
-        df = pd.DataFrame(akun_list, columns=["Uraian", "Kategori"])
-        df["Jumlah"] = 0.0
-        st.session_state.data[laporan] = df
+# Form Input Transaksi
+with st.expander("➕ Tambah Transaksi"):
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        tanggal = st.date_input("Tanggal", datetime.today())
+    with col2:
+        akun = st.text_input("Akun")
+    with col3:
+        keterangan = st.text_input("Keterangan")
 
-# Fungsi perhitungan otomatis
-def hitung_otomatis():
-    # Laba Bersih
-    df_lr = st.session_state.data["Laporan Laba Rugi"]
-    pendapatan = df_lr[df_lr["Kategori"] == "Pendapatan"]["Jumlah"].sum()
-    beban = df_lr[df_lr["Kategori"] == "Beban"]["Jumlah"].sum()
+    col4, col5 = st.columns(2)
+    with col4:
+        debit = st.number_input("Debit", min_value=0.0, format="%.2f")
+    with col5:
+        kredit = st.number_input("Kredit", min_value=0.0, format="%.2f")
+
+    if st.button("Simpan Transaksi"):
+        if akun and (debit > 0 or kredit > 0):
+            new = pd.DataFrame([{
+                "Tanggal": tanggal.strftime("%Y-%m-%d"),
+                "Akun": akun,
+                "Debit": debit,
+                "Kredit": kredit,
+                "Keterangan": keterangan
+            }])
+            st.session_state.gl = pd.concat([st.session_state.gl, new], ignore_index=True)
+        else:
+            st.warning("Akun dan nominal debit/kredit harus diisi.")
+
+# Tampilkan GL
+st.dataframe(st.session_state.gl, use_container_width=True)
+
+# ===== Fungsi Pembantu =====
+def filter_akun(df, nama):
+    return df[df["Akun"].str.contains(nama, case=False, na=False)]
+
+def total_akun(df, nama):
+    filtered = filter_akun(df, nama)
+    return filtered["Debit"].sum() - filtered["Kredit"].sum()
+
+# ===== Buat Laporan Otomatis =====
+def buat_laporan():
+    df = st.session_state.gl
+
+    # --- Laba Rugi
+    pendapatan = total_akun(df, "Pendapatan")
+    beban = total_akun(df, "Beban")
     laba_bersih = pendapatan - beban
 
-    # Update ke Perubahan Ekuitas
-    df_pe = st.session_state.data["Laporan Perubahan Ekuitas"]
-    df_pe.loc[df_pe["Uraian"] == "Laba Tahun Berjalan", "Jumlah"] = laba_bersih
-
-    # Hitung Modal Akhir
-    modal_awal = df_pe.loc[df_pe["Uraian"] == "Modal Awal", "Jumlah"].sum()
-    penambahan = df_pe.loc[df_pe["Uraian"] == "Penambahan Modal", "Jumlah"].sum()
-    prive = df_pe.loc[df_pe["Uraian"] == "Pengambilan Prive", "Jumlah"].sum()
+    # --- Perubahan Ekuitas
+    modal_awal = total_akun(df, "Modal")
+    prive = total_akun(df, "Prive")
+    penambahan = total_akun(df, "Penambahan Modal")
     modal_akhir = modal_awal + laba_bersih + penambahan - prive
-    df_pe.loc[df_pe["Uraian"] == "Modal Akhir", "Jumlah"] = modal_akhir
 
-    # Update Arus Kas
-    df_kas = st.session_state.data["Laporan Arus Kas"]
-    kas_operasi = df_kas.loc[df_kas["Uraian"] == "Kas dari Aktivitas Operasi", "Jumlah"].sum()
-    kas_investasi = df_kas.loc[df_kas["Uraian"] == "Kas dari Aktivitas Investasi", "Jumlah"].sum()
-    kas_pendanaan = df_kas.loc[df_kas["Uraian"] == "Kas dari Aktivitas Pendanaan", "Jumlah"].sum()
-    kenaikan_kas = kas_operasi + kas_investasi + kas_pendanaan
-    df_kas.loc[df_kas["Uraian"] == "Kenaikan/Penurunan Kas", "Jumlah"] = kenaikan_kas
-    df_kas.loc[df_kas["Uraian"] == "Kas Akhir", "Jumlah"] = kenaikan_kas  # Sederhana: diasumsikan kas awal 0
+    # --- Arus Kas (sederhana)
+    kas_masuk = df[df["Akun"].str.contains("Kas", case=False)]["Debit"].sum()
+    kas_keluar = df[df["Akun"].str.contains("Kas", case=False)]["Kredit"].sum()
+    kas_akhir = kas_masuk - kas_keluar
 
-    # Update ke Neraca
-    df_nr = st.session_state.data["Laporan Posisi Keuangan"]
-    df_nr.loc[df_nr["Uraian"] == "Kas", "Jumlah"] = kenaikan_kas
-    df_nr.loc[df_nr["Uraian"] == "Modal Akhir", "Jumlah"] = modal_akhir
+    # --- Neraca
+    aset = kas_akhir + total_akun(df, "Piutang") + total_akun(df, "Peralatan")
+    kewajiban = total_akun(df, "Utang")
+    ekuitas = modal_akhir
+    total_kewajiban_ekuitas = kewajiban + ekuitas
 
-# Fungsi export HTML
-def export_html(nama_laporan, df):
+    return {
+        "laba_bersih": laba_bersih,
+        "modal_akhir": modal_akhir,
+        "kas_akhir": kas_akhir,
+        "aset": aset,
+        "kewajiban": kewajiban,
+        "ekuitas": ekuitas,
+        "total_ke": total_kewajiban_ekuitas,
+        "pendapatan": pendapatan,
+        "beban": beban
+    }
+
+laporan = buat_laporan()
+
+# ===== Tampilan Laporan =====
+st.header("📄 Laporan Keuangan Otomatis")
+
+col1, col2 = st.columns(2)
+
+with col1:
+    st.subheader("Laba Rugi")
+    st.markdown(f"- **Pendapatan:** Rp {laporan['pendapatan']:,.2f}")
+    st.markdown(f"- **Beban:** Rp {laporan['beban']:,.2f}")
+    st.markdown(f"- **Laba Bersih:** Rp {laporan['laba_bersih']:,.2f}")
+
+    st.subheader("Perubahan Ekuitas")
+    st.markdown(f"- **Modal Awal:** Rp {total_akun(st.session_state.gl, 'Modal'):,.2f}")
+    st.markdown(f"- **Penambahan Modal:** Rp {total_akun(st.session_state.gl, 'Penambahan Modal'):,.2f}")
+    st.markdown(f"- **Prive:** Rp {total_akun(st.session_state.gl, 'Prive'):,.2f}")
+    st.markdown(f"- **Laba Tahun Berjalan:** Rp {laporan['laba_bersih']:,.2f}")
+    st.markdown(f"- **Modal Akhir:** Rp {laporan['modal_akhir']:,.2f}")
+
+with col2:
+    st.subheader("Arus Kas")
+    st.markdown(f"- **Kas Masuk:** Rp {st.session_state.gl[st.session_state.gl['Akun'].str.contains('Kas', case=False)]['Debit'].sum():,.2f}")
+    st.markdown(f"- **Kas Keluar:** Rp {st.session_state.gl[st.session_state.gl['Akun'].str.contains('Kas', case=False)]['Kredit'].sum():,.2f}")
+    st.markdown(f"- **Saldo Kas Akhir:** Rp {laporan['kas_akhir']:,.2f}")
+
+    st.subheader("Neraca")
+    st.markdown(f"- **Total Aset:** Rp {laporan['aset']:,.2f}")
+    st.markdown(f"- **Total Kewajiban:** Rp {laporan['kewajiban']:,.2f}")
+    st.markdown(f"- **Total Ekuitas:** Rp {laporan['ekuitas']:,.2f}")
+    st.markdown(f"- **Total Kewajiban + Ekuitas:** Rp {laporan['total_ke']:,.2f}")
+
+# ===== Export HTML (Ikhtisar) =====
+def export_ikhtisar():
     html = f"""
-    <h3>{nama_laporan}</h3>
-    <table border="1" cellspacing="0" cellpadding="5">
-    <tr><th>Uraian</th><th>Kategori</th><th>Jumlah</th></tr>
-    {''.join(f"<tr><td>{row['Uraian']}</td><td>{row['Kategori']}</td><td>{row['Jumlah']}</td></tr>" for _, row in df.iterrows())}
-    </table><br>
+    <h2>Ikhtisar Laporan Keuangan BUMDes</h2>
+    <p><strong>{nama_bumdes} - Desa {desa} - Tahun {tahun}</strong></p>
+    <h3>Laba Rugi</h3>
+    <ul>
+        <li>Pendapatan: Rp {laporan['pendapatan']:,.2f}</li>
+        <li>Beban: Rp {laporan['beban']:,.2f}</li>
+        <li>Laba Bersih: Rp {laporan['laba_bersih']:,.2f}</li>
+    </ul>
+    <h3>Perubahan Ekuitas</h3>
+    <ul>
+        <li>Modal Awal: Rp {total_akun(st.session_state.gl, 'Modal'):,.2f}</li>
+        <li>Penambahan Modal: Rp {total_akun(st.session_state.gl, 'Penambahan Modal'):,.2f}</li>
+        <li>Prive: Rp {total_akun(st.session_state.gl, 'Prive'):,.2f}</li>
+        <li>Laba Tahun Berjalan: Rp {laporan['laba_bersih']:,.2f}</li>
+        <li>Modal Akhir: Rp {laporan['modal_akhir']:,.2f}</li>
+    </ul>
+    <h3>Arus Kas</h3>
+    <ul>
+        <li>Kas Masuk: Rp {st.session_state.gl[st.session_state.gl['Akun'].str.contains('Kas', case=False)]['Debit'].sum():,.2f}</li>
+        <li>Kas Keluar: Rp {st.session_state.gl[st.session_state.gl['Akun'].str.contains('Kas', case=False)]['Kredit'].sum():,.2f}</li>
+        <li>Saldo Kas Akhir: Rp {laporan['kas_akhir']:,.2f}</li>
+    </ul>
+    <h3>Neraca</h3>
+    <ul>
+        <li>Total Aset: Rp {laporan['aset']:,.2f}</li>
+        <li>Total Kewajiban: Rp {laporan['kewajiban']:,.2f}</li>
+        <li>Total Ekuitas: Rp {laporan['ekuitas']:,.2f}</li>
+        <li>Total Kewajiban + Ekuitas: Rp {laporan['total_ke']:,.2f}</li>
+    </ul>
     """
-    return html
+    b64 = base64.b64encode(html.encode()).decode()
+    return f'<a href="data:text/html;base64,{b64}" download="ikhtisar_bumdes.html">📥 Unduh Ikhtisar (HTML)</a>'
 
-# Jalankan perhitungan otomatis
-hitung_otomatis()
-
-# Tampilkan semua laporan
-laporan_order = [
-    "Laporan Laba Rugi",
-    "Laporan Perubahan Ekuitas",
-    "Laporan Arus Kas",
-    "Laporan Posisi Keuangan"
-]
-
-html_full = ""
-
-for nama in laporan_order:
-    st.subheader(nama)
-
-    # Edit data
-    df = st.session_state.data[nama]
-    edited_df = st.data_editor(df, use_container_width=True, num_rows="dynamic", key=f"edit_{nama}")
-    st.session_state.data[nama] = edited_df
-
-    # Tambah akun
-    with st.expander(f"➕ Tambah Akun ke {nama}"):
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            uraian = st.text_input("Uraian", key=f"uraian_{nama}")
-        with col2:
-            kategori = st.text_input("Kategori", key=f"kategori_{nama}")
-        with col3:
-            jumlah = st.number_input("Jumlah", key=f"jumlah_{nama}", value=0.0)
-        if st.button("Tambah", key=f"tambah_{nama}"):
-            if uraian and kategori:
-                st.session_state.data[nama] = pd.concat([
-                    st.session_state.data[nama],
-                    pd.DataFrame([{"Uraian": uraian, "Kategori": kategori, "Jumlah": jumlah}])
-                ], ignore_index=True)
-            else:
-                st.warning("Lengkapi uraian dan kategori.")
-
-    html_full += export_html(nama, st.session_state.data[nama])
-
-# Tombol unduh
-html_final = f"""
-<html><body>
-<h2>Laporan Keuangan BUMDes</h2>
-<p><strong>{nama_bumdes} - Desa {desa} - Tahun {tahun}</strong></p>
-{html_full}
-</body></html>
-"""
-
-b64 = base64.b64encode(html_final.encode()).decode()
-href = f'<a href="data:text/html;base64,{b64}" download="laporan_keuangan.html">📥 Unduh Semua Laporan (HTML)</a>'
-st.markdown(href, unsafe_allow_html=True)
+st.markdown(export_ikhtisar(), unsafe_allow_html=True)
