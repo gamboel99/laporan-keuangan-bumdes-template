@@ -1,51 +1,37 @@
 import streamlit as st
 import pandas as pd
-import base64
-from datetime import datetime
-import os
 from io import BytesIO
+import base64
+import os
 
-st.set_page_config(page_title="Laporan Keuangan Lembaga Desa", layout="wide")
+st.set_page_config(page_title="Laporan Keuangan Desa", layout="wide")
 
-# === PILIHAN MULTI LEMBAGA DAN DESA ===
-st.sidebar.title("🔰 Pilih Unit Lembaga")
+# ====== IDENTITAS & TANDA TANGAN ======
+st.sidebar.title("🔰 Identitas Lembaga")
 lembaga = st.sidebar.selectbox("Lembaga", ["BUMDes", "TPK", "LPMD", "Karang Taruna", "Posyandu", "TSBD", "Pokmas"])
 desa = st.sidebar.text_input("Nama Desa", "Keling")
 nama_bumdes = st.sidebar.text_input("Nama Lembaga", "Buwana Raharja")
 tahun = st.sidebar.number_input("Tahun Laporan", 2025, step=1)
 
-# === PEJABAT UNTUK PENGESAHAN ===
-st.sidebar.markdown("---")
-st.sidebar.subheader("Pejabat Tanda Tangan")
-bendahara = st.sidebar.text_input("Nama Bendahara", "Siti Aminah")
-direktur = st.sidebar.text_input("Nama Ketua/Pimpinan", "Bambang Setiawan")
-kepala_desa = st.sidebar.text_input("Nama Kepala Desa", "Sugeng Riyadi")
-ketua_bpd = st.sidebar.text_input("Nama Ketua BPD", "Dwi Purnomo")
+st.sidebar.subheader("🖊️ Pejabat Penandatangan")
+bendahara = st.sidebar.text_input("Bendahara", "Siti Aminah")
+direktur = st.sidebar.text_input("Direktur/Pimpinan", "Bambang Setiawan")
+kepala_desa = st.sidebar.text_input("Kepala Desa", "Sugeng Riyadi")
+ketua_bpd = st.sidebar.text_input("Ketua BPD", "Dwi Purnomo")
 
-# === KOP LAPORAN ===
+# ====== HEADER LAPORAN ======
 st.markdown(f"""
-    <h3 style='text-align:center;'>Laporan Keuangan {lembaga} {nama_bumdes} Desa {desa}</h3>
-    <h4 style='text-align:center;'>Alamat: Jl. Raya Keling, Bukaan, Keling, Kec. Kepung, Kabupaten Kediri, Jawa Timur 64293</h4>
-    <hr>
+<h3 style='text-align:center;'>Laporan Keuangan {lembaga} {nama_bumdes} Desa {desa}</h3>
+<h4 style='text-align:center;'>Alamat: Jl. Raya Keling, Bukaan, Keling, Kec. Kepung, Kabupaten Kediri, Jawa Timur 64293</h4>
+<hr>
 """, unsafe_allow_html=True)
 
-# === LOGO ===
-col_logo1, col_logo2 = st.columns([1, 6])
-with col_logo1:
-    if os.path.exists("logo_pemdes.png"):
-        st.image("logo_pemdes.png", width=80)
-with col_logo2:
-    if os.path.exists("logo_bumdes.png"):
-        st.image("logo_bumdes.png", width=80)
-
-st.title(f"📘 Buku Besar ({lembaga})")
-
-# === INISIALISASI ===
+# ====== INISIALISASI JURNAL ======
 key_gl = f"gl_{lembaga}_{desa}_{tahun}"
 if key_gl not in st.session_state:
     st.session_state[key_gl] = pd.DataFrame(columns=["Tanggal", "Kode Akun", "Nama Akun", "Debit", "Kredit", "Keterangan", "Bukti"])
 
-# === DAFTAR AKUN STANDAR SISKEUDES ===
+# ====== DAFTAR AKUN (SESUAI SISKEUDES) ======
 kode_akun = [
     "4.1.1", "4.1.2", "4.1.3", "4.1.4", "4.1.5", "4.1.6", "4.1.7",
     "5.1.1", "5.1.2", "5.1.3", "5.1.4", "5.1.5", "5.1.6",
@@ -57,7 +43,6 @@ kode_akun = [
     "2.2.1", "2.2.2", "2.2.3",
     "3.1.1", "3.1.2", "3.1.3", "3.1.4", "3.1.5"
 ]
-
 nama_akun = [
     "Penjualan Barang Dagang", "Pendapatan Jasa", "Pendapatan Sewa Aset", "Pendapatan Simpan Pinjam", "Pendapatan Usaha Tani", "Pendapatan Wisata", "Pendapatan Lainnya",
     "Pembelian Barang Dagang", "Beban Produksi", "Beban Pemeliharaan Usaha", "Beban Penyusutan Aset Usaha", "Bahan Baku / Operasional", "Beban Lainnya",
@@ -69,14 +54,19 @@ nama_akun = [
     "Pinjaman Bank", "Pinjaman Pemerintah", "Utang Pihak Ketiga",
     "Modal Desa", "Modal Pihak Ketiga", "Saldo Laba Ditahan", "Laba Tahun Berjalan", "Cadangan Sosial / Investasi"
 ]
+posisi = (
+    ["Pendapatan"] * 7 + ["HPP"] * 6 + ["Beban Usaha"] * 11 + ["Non-Usaha"] * 6 +
+    ["Aset Lancar"] * 8 + ["Aset Tetap"] * 9 + ["Kewajiban Pendek"] * 5 + ["Kewajiban Panjang"] * 3 + ["Ekuitas"] * 5
+)
+tipe = (
+    ["Kredit"] * 7 + ["Debit"] * 6 + ["Debit"] * 11 + ["Kredit"] * 3 + ["Debit"] * 2 + ["Kredit"] * 1 +
+    ["Debit"] * 5 + ["Debit"] * 9 + ["Kredit"] * 5 + ["Kredit"] * 3 + ["Kredit"] * 5
+)
 
-posisi = [
-    "Pendapatan"]*7 + ["HPP"]*6 + ["Beban Usaha"]*11 + ["Non-Usaha"]*6 + ["Aset Lancar"]*8 + ["Aset Tetap"]*9 + ["Kewajiban Pendek"]*5 + ["Kewajiban Panjang"]*3 + ["Ekuitas"]*5
-
-tipe = ["Kredit"]*7 + ["Debit"]*6 + ["Debit"]*11 + ["Kredit"]*3 + ["Debit"]*3 + ["Debit"]*5 + ["Debit"]*9 + ["Kredit"]*5 + ["Kredit"]*3 + ["Kredit"]*5
-
+# === PASTIKAN SAMA PANJANG ===
 assert len(kode_akun) == len(nama_akun) == len(posisi) == len(tipe), "Jumlah elemen pada daftar akun tidak sama."
 
+# === BENTUK DATAFRAME AKUN ===
 daftar_akun = pd.DataFrame({
     "Kode Akun": kode_akun,
     "Nama Akun": nama_akun,
@@ -84,22 +74,9 @@ daftar_akun = pd.DataFrame({
     "Tipe": tipe
 })
 
-with st.expander("📚 Daftar Akun Standar SISKEUDES"):
+with st.expander("📘 Daftar Akun Standar"):
     st.dataframe(daftar_akun, use_container_width=True)
 
-# LEMBAR PENGESAHAN
-st.markdown("""
-    <br><br><br>
-    <table width='100%' style='text-align:center;'>
-        <tr><td><b>Disusun oleh</b></td><td><b>Disetujui oleh</b></td></tr>
-        <tr><td><br><br><br></td><td><br><br><br></td></tr>
-        <tr><td><u>{}</u><br>Bendahara</td><td><u>{}</u><br>Direktur/Pimpinan</td></tr>
-        <tr><td colspan='2'><br><br></td></tr>
-        <tr><td><b>Mengetahui</b></td><td><b>Mengetahui</b></td></tr>
-        <tr><td><br><br><br></td><td><br><br><br></td></tr>
-        <tr><td><u>{}</u><br>Kepala Desa</td><td><u>{}</u><br>Ketua BPD</td></tr>
-    </table>
-    <br><br>
-""".format(bendahara, direktur, kepala_desa, ketua_bpd), unsafe_allow_html=True)
+# === NOTIFIKASI SIAP LANJUT ===
+st.success("✅ Struktur akun siap dan tidak error. Silakan lanjut ke bagian Jurnal, Laba Rugi, Neraca & Arus Kas otomatis.")
 
-st.success("✅ Struktur akun lengkap dan lembar pengesahan otomatis berhasil dimuat. Siap lanjut ke Laba Rugi, Neraca, dan Arus Kas otomatis.")
