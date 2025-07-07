@@ -5,11 +5,11 @@ from datetime import datetime
 import os
 from io import BytesIO
 
-st.set_page_config(page_title="Laporan Keuangan BUMDes", layout="wide")
+st.set_page_config(page_title="Laporan Keuangan Lembaga Desa", layout="wide")
 
 # === PILIHAN MULTI LEMBAGA DAN DESA ===
 st.sidebar.title("🔰 Pilih Unit Lembaga")
-lembaga = st.sidebar.selectbox("Lembaga", ["BUMDes", "PKK", "Karang Taruna", "LPMD", "BPD", "TPK", "Posyandu", "TSBD", "Pokmas Lainnya"])
+lembaga = st.sidebar.selectbox("Lembaga", ["BUMDes", "TPK", "LPMD", "Karang Taruna", "Posyandu", "TSBD", "Pokmas"])
 desa = st.sidebar.text_input("Nama Desa", "Keling")
 nama_bumdes = st.sidebar.text_input("Nama Lembaga", "Buwana Raharja")
 tahun = st.sidebar.number_input("Tahun Laporan", 2025, step=1)
@@ -24,7 +24,7 @@ ketua_bpd = st.sidebar.text_input("Nama Ketua BPD", "Dwi Purnomo")
 
 # === KOP LAPORAN ===
 st.markdown(f"""
-    <h3 style='text-align:center;'>Laporan Keuangan {nama_bumdes} Desa {desa}</h3>
+    <h3 style='text-align:center;'>Laporan Keuangan {lembaga} {nama_bumdes} Desa {desa}</h3>
     <h4 style='text-align:center;'>Alamat: Jl. Raya Keling, Bukaan, Keling, Kec. Kepung, Kabupaten Kediri, Jawa Timur 64293</h4>
     <hr>
 """, unsafe_allow_html=True)
@@ -40,132 +40,57 @@ with col_logo2:
 
 st.title(f"📘 Buku Besar ({lembaga})")
 
-# === DAFTAR AKUN DEFAULT SESUAI SISKEUDES / PSAK ===
-daftar_akun = pd.DataFrame({
-    "Kode Akun": ["4.1.1", "4.1.2", "4.1.3", "5.1.1", "5.1.2", "1.1.1", "2.1.1"],
-    "Nama Akun": [
-        "Penjualan Barang Dagang",
-        "Pendapatan Jasa",
-        "Pendapatan Sewa",
-        "Beban Gaji",
-        "Beban Listrik",
-        "Kas",
-        "Utang Usaha"
-    ],
-    "Posisi": ["Pendapatan", "Pendapatan", "Pendapatan", "Beban", "Beban", "Aset", "Kewajiban"],
-    "Tipe": ["Kredit", "Kredit", "Kredit", "Debit", "Debit", "Debit", "Kredit"]
-})
-
 # === INISIALISASI ===
 key_gl = f"gl_{lembaga}_{desa}_{tahun}"
 if key_gl not in st.session_state:
     st.session_state[key_gl] = pd.DataFrame(columns=["Tanggal", "Kode Akun", "Nama Akun", "Debit", "Kredit", "Keterangan", "Bukti"])
 
-with st.expander("📚 Daftar Akun Standar"):
+# === DAFTAR AKUN STANDAR SISKEUDES ===
+daftar_akun = pd.DataFrame({
+    "Kode Akun": [
+        "4.1.1", "4.1.2", "4.1.3", "4.1.4", "4.1.5", "4.1.6", "4.1.7",
+        "5.1.1", "5.1.2", "5.1.3", "5.1.4", "5.1.5", "5.1.6",
+        "5.2.1", "5.2.2", "5.2.3", "5.2.4", "5.2.5", "5.2.6", "5.2.7", "5.2.8", "5.2.9", "5.2.10", "5.2.11",
+        "6.1", "6.2", "6.3", "6.4", "6.5", "6.6",
+        "1.1.1", "1.1.2", "1.1.3", "1.1.4", "1.1.5", "1.1.6", "1.1.7", "1.1.8",
+        "1.2.1", "1.2.2", "1.2.3", "1.2.4", "1.2.5", "1.2.6", "1.2.7", "1.2.8", "1.2.9",
+        "2.1.1", "2.1.2", "2.1.3", "2.1.4", "2.1.5",
+        "2.2.1", "2.2.2", "2.2.3",
+        "3.1.1", "3.1.2", "3.1.3", "3.1.4", "3.1.5"
+    ],
+    "Nama Akun": [
+        "Penjualan Barang Dagang", "Pendapatan Jasa", "Pendapatan Sewa Aset", "Pendapatan Simpan Pinjam", "Pendapatan Usaha Tani", "Pendapatan Wisata", "Pendapatan Lainnya",
+        "Pembelian Barang Dagang", "Beban Produksi", "Beban Pemeliharaan Usaha", "Beban Penyusutan Aset Usaha", "Bahan Baku / Operasional", "Beban Lainnya",
+        "Gaji dan Tunjangan", "Listrik, Air, Komunikasi", "Transportasi", "Administrasi & Umum", "Sewa Tempat", "Perlengkapan", "Penyusutan Aset Tetap", "Penyuluhan", "Promosi & Publikasi", "Operasional Wisata", "CSR / Kegiatan Desa",
+        "Pendapatan Bunga", "Pendapatan Investasi", "Pendapatan Lain-lain", "Beban Bunga", "Kerugian Penjualan Aset", "Pajak",
+        "Kas", "Bank", "Piutang Usaha", "Persediaan Dagang", "Persediaan Bahan Baku", "Uang Muka", "Investasi Pendek", "Pendapatan Diterima Di Muka",
+        "Tanah", "Bangunan", "Peralatan", "Kendaraan", "Inventaris", "Aset Tetap Lainnya", "Akumulasi Penyusutan", "Investasi Panjang", "Aset Lain-lain",
+        "Utang Usaha", "Utang Gaji", "Utang Pajak", "Pendapatan Diterima Di Muka", "Utang Lain-lain",
+        "Pinjaman Bank", "Pinjaman Pemerintah", "Utang Pihak Ketiga",
+        "Modal Desa", "Modal Pihak Ketiga", "Saldo Laba Ditahan", "Laba Tahun Berjalan", "Cadangan Sosial / Investasi"
+    ],
+    "Posisi": [
+        "Pendapatan"]*7 + ["HPP"]*6 + ["Beban Usaha"]*11 + ["Non-Usaha"]*6 + ["Aset Lancar"]*8 + ["Aset Tetap"]*9 + ["Kewajiban Pendek"]*5 + ["Kewajiban Panjang"]*3 + ["Ekuitas"]*5,
+    "Tipe": ["Kredit"]*7 + ["Debit"]*6 + ["Debit"]*11 + ["Kredit"]*3 + ["Debit"]*2 + ["Kredit"]*1 + ["Debit"]*5 + ["Debit"]*9 + ["Kredit"]*5 + ["Kredit"]*3 + ["Kredit"]*5
+})
+
+with st.expander("📚 Daftar Akun Standar SISKEUDES"):
     st.dataframe(daftar_akun, use_container_width=True)
 
-# === FORM TAMBAH TRANSAKSI ===
-with st.expander("➕ Tambah Transaksi"):
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        tanggal = st.date_input("Tanggal", datetime.today())
-    with col2:
-        kode_akun = st.selectbox("Kode Akun", daftar_akun["Kode Akun"])
-    with col3:
-        nama_akun = daftar_akun.loc[daftar_akun["Kode Akun"] == kode_akun, "Nama Akun"].values[0]
+# LEMBAR PENGESAHAN
+st.markdown("""
+    <br><br><br>
+    <table width='100%' style='text-align:center;'>
+        <tr><td><b>Disusun oleh</b></td><td><b>Disetujui oleh</b></td></tr>
+        <tr><td><br><br><br></td><td><br><br><br></td></tr>
+        <tr><td><u>{}</u><br>Bendahara</td><td><u>{}</u><br>Direktur/Pimpinan</td></tr>
+        <tr><td colspan='2'><br><br></td></tr>
+        <tr><td><b>Mengetahui</b></td><td><b>Mengetahui</b></td></tr>
+        <tr><td><br><br><br></td><td><br><br><br></td></tr>
+        <tr><td><u>{}</u><br>Kepala Desa</td><td><u>{}</u><br>Ketua BPD</td></tr>
+    </table>
+    <br><br>
+""".format(bendahara, direktur, kepala_desa, ketua_bpd), unsafe_allow_html=True)
 
-    keterangan = st.text_input("Keterangan")
-    col4, col5, col6 = st.columns(3)
-    with col4:
-        debit = st.number_input("Debit", min_value=0.0, format="%.2f")
-    with col5:
-        kredit = st.number_input("Kredit", min_value=0.0, format="%.2f")
-    with col6:
-        bukti_file = st.file_uploader("Upload Nota/Bukti", type=["png", "jpg", "jpeg", "pdf"])
-
-    if st.button("💾 Simpan Transaksi"):
-        if kode_akun and (debit > 0 or kredit > 0):
-            if bukti_file:
-                bukti_path = f"bukti_{datetime.now().strftime('%Y%m%d%H%M%S')}_{bukti_file.name}"
-                with open(bukti_path, "wb") as f:
-                    f.write(bukti_file.read())
-            else:
-                bukti_path = ""
-            new_row = pd.DataFrame([{
-                "Tanggal": tanggal.strftime("%Y-%m-%d"),
-                "Kode Akun": kode_akun,
-                "Nama Akun": nama_akun,
-                "Debit": debit,
-                "Kredit": kredit,
-                "Keterangan": keterangan,
-                "Bukti": bukti_path
-            }])
-            st.session_state[key_gl] = pd.concat([st.session_state[key_gl], new_row], ignore_index=True)
-            st.success("✅ Transaksi berhasil disimpan.")
-        else:
-            st.warning("⚠️ Lengkapi semua data transaksi.")
-
-# === TAMPILKAN DAN HAPUS ===
-st.subheader("📋 Daftar Transaksi")
-df_gl = st.session_state[key_gl]
-
-if not df_gl.empty:
-    for i in df_gl.index:
-        st.write(f"{df_gl.at[i, 'Tanggal']} - {df_gl.at[i, 'Kode Akun']} {df_gl.at[i, 'Nama Akun']}")
-        st.write(f"💬 {df_gl.at[i, 'Keterangan']} | Debit: Rp{df_gl.at[i, 'Debit']}, Kredit: Rp{df_gl.at[i, 'Kredit']}")
-        if df_gl.at[i, 'Bukti'] and os.path.exists(df_gl.at[i, 'Bukti']):
-            if df_gl.at[i, 'Bukti'].endswith(".pdf"):
-                st.markdown(f"[📎 Lihat PDF]({df_gl.at[i, 'Bukti']})")
-            else:
-                st.image(df_gl.at[i, 'Bukti'], width=200)
-        if st.button(f"Hapus Transaksi {i+1}", key=f"hapus_{i}"):
-            st.session_state[key_gl] = df_gl.drop(index=i).reset_index(drop=True)
-            st.experimental_rerun()
-else:
-    st.info("Belum ada transaksi.")
-
-# === EKSPOR EXCEL GENERAL LEDGER ===
-st.subheader("📥 Unduh General Ledger")
-def download_excel(dataframe, filename):
-    output = BytesIO()
-    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-        dataframe.to_excel(writer, index=False, sheet_name='GeneralLedger')
-    b64 = base64.b64encode(output.getvalue()).decode()
-    return f"<a href='data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,{b64}' download='{filename}'>⬇️ Download Excel</a>"
-
-st.markdown(download_excel(df_gl, f"General_Ledger_{lembaga}_{desa}_{tahun}.xlsx"), unsafe_allow_html=True)
-
-# === GABUNGKAN df_gl DENGAN AKUN UNTUK POSISI ===
-df_gl_merged = df_gl.merge(daftar_akun, on="Kode Akun", how="left")
-
-# === LAPORAN LABA RUGI SEDERHANA ===
-st.header("📊 Laporan Laba Rugi")
-pendapatan = df_gl_merged[df_gl_merged["Posisi"] == "Pendapatan"]["Kredit"].sum()
-beban = df_gl_merged[df_gl_merged["Posisi"] == "Beban"]["Debit"].sum()
-laba_bersih = pendapatan - beban
-
-st.write(f"**Pendapatan:** Rp {pendapatan:,.2f}")
-st.write(f"**Beban:** Rp {beban:,.2f}")
-st.write(f"**Laba Bersih:** Rp {laba_bersih:,.2f}")
-
-# === LAPORAN NERACA SEDERHANA ===
-st.header("📑 Neraca (Posisi Keuangan)")
-aset = df_gl_merged[df_gl_merged["Posisi"] == "Aset"]["Debit"].sum()
-kewajiban = df_gl_merged[df_gl_merged["Posisi"] == "Kewajiban"]["Kredit"].sum()
-ekuitas = df_gl_merged[df_gl_merged["Posisi"] == "Ekuitas"]["Kredit"].sum() + laba_bersih
-
-st.write(f"**Total Aset:** Rp {aset:,.2f}")
-st.write(f"**Total Kewajiban:** Rp {kewajiban:,.2f}")
-st.write(f"**Total Ekuitas:** Rp {ekuitas:,.2f}")
-
-# === ARUS KAS SEDERHANA ===
-st.header("💸 Laporan Arus Kas")
-arus_kas_masuk = df_gl["Debit"].sum()
-arus_kas_keluar = df_gl["Kredit"].sum()
-saldo_kas = arus_kas_masuk - arus_kas_keluar
-
-st.write(f"**Kas Masuk:** Rp {arus_kas_masuk:,.2f}")
-st.write(f"**Kas Keluar:** Rp {arus_kas_keluar:,.2f}")
-st.write(f"**Saldo Akhir Kas:** Rp {saldo_kas:,.2f}")
-
-st.success("✅ Semua laporan berhasil dibuat. Siap diunduh dan dicetak.")
+# Catatan: Laporan otomatis Laba Rugi, Neraca, Arus Kas akan dilanjutkan di bagian berikutnya
+st.success("✅ Struktur akun lengkap dan lembar pengesahan otomatis berhasil dimuat. Siap lanjut ke Laba Rugi, Neraca, dan Arus Kas otomatis.")
