@@ -21,16 +21,20 @@ direktur = st.sidebar.text_input("Nama Ketua/Pimpinan", "Bambang Setiawan")
 kepala_desa = st.sidebar.text_input("Nama Kepala Desa", "Sugeng Riyadi")
 ketua_bpd = st.sidebar.text_input("Nama Ketua BPD", "Dwi Purnomo")
 
-st.title(f"📘 Buku Besar ({lembaga})")
-
 # === LOGO ===
-col_logo1, col_logo2 = st.columns([1, 6])
+col_logo1, col_logo2 = st.columns([1, 1])
 with col_logo1:
     if os.path.exists("logo_pemdes.png"):
-        st.image("logo_pemdes.png", width=80)
+        st.image("logo_pemdes.png", width=100)
+    else:
+        st.text("Logo Pemdes tidak ditemukan")
 with col_logo2:
     if os.path.exists("logo_bumdes.png"):
-        st.image("logo_bumdes.png", width=80)
+        st.image("logo_bumdes.png", width=100)
+    else:
+        st.text("Logo BUMDes tidak ditemukan")
+
+st.title(f"📘 Buku Besar ({lembaga})")
 
 # === INISIALISASI ===
 key_gl = f"gl_{lembaga}_{desa}_{tahun}"
