@@ -1,40 +1,69 @@
+
 import streamlit as st
 import pandas as pd
-from datetime import date
+import pdfkit
+from jinja2 import Template
 
 st.set_page_config(page_title="Laporan Keuangan BUMDes", layout="wide")
-st.title("📊 Laporan Keuangan BUMDes Buwana Raharja")
-st.caption("Posisi Keuangan • Laba Rugi • Arus Kas • Perubahan Ekuitas")
 
-# Sidebar
-st.sidebar.header("Identitas BUMDes")
+# Identitas BUMDes
+st.sidebar.title("Identitas BUMDes")
 nama_bumdes = st.sidebar.text_input("Nama BUMDes", "Buwana Raharja")
 desa = st.sidebar.text_input("Desa", "Keling")
-tahun = st.sidebar.number_input("Tahun Laporan", min_value=2020, max_value=2100, value=date.today().year)
+tahun = st.sidebar.number_input("Tahun Laporan", 2025, step=1)
 
-# Input Template
-def laporan_input(title, cols):
-    st.subheader(title)
-    df = st.session_state.get(title, pd.DataFrame(columns=cols))
-    with st.form(f"form_{title}"):
-        with st.expander("➕ Tambah Data"):
-            inputs = [
-                st.text_input(f"{c}", key=f"{title}_{c}") if c != cols[-1]
-                else st.number_input(f"{c}", key=f"{title}_{c}", value=0.0)
-                for c in cols
-            ]
-            if st.form_submit_button("Tambah"):
-                new = pd.DataFrame([inputs], columns=cols)
-                st.session_state[title] = pd.concat([df, new], ignore_index=True)
-    # Tampilkan
-    st.dataframe(st.session_state.get(title, df), use_container_width=True)
+st.title("📊 Laporan Keuangan BUMDes")
 
-# Sections
-laporan_input("Laporan Posisi Keuangan", ["Akun", "Kategori (Aset/Kewajiban/Ekuitas)", "Jumlah"])
-laporan_input("Laporan Laba Rugi", ["Akun", "Kategori (Pendapatan/Beban)", "Jumlah"])
-laporan_input("Laporan Arus Kas", ["Kegiatan", "Kategori (Operasi/Investasi/Pendanaan)", "Jumlah"])
-laporan_input("Laporan Perubahan Ekuitas", ["Uraian", "Kategori (Modal Awal/Laba Ditahan/Penambahan Modal)", "Jumlah"])
+menu = st.selectbox("Pilih Laporan", [
+    "Laporan Posisi Keuangan",
+    "Laporan Laba Rugi",
+    "Laporan Arus Kas",
+    "Laporan Perubahan Ekuitas"
+])
 
-st.markdown("---")
-st.warning("📥 Fitur unduh PDF belum tersedia. Silakan copy ke Excel via tombol export pada tabel.")
-st.markdown(f"**© {tahun} BUMDes {nama_bumdes}, Desa {desa}**")
+if "data" not in st.session_state:
+    st.session_state.data = {}
+
+if menu not in st.session_state.data:
+    st.session_state.data[menu] = pd.DataFrame(columns=["Uraian", "Kategori", "Jumlah"])
+
+with st.expander("➕ Tambah Data"):
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        uraian = st.text_input("Uraian")
+    with col2:
+        kategori = st.text_input("Kategori")
+    with col3:
+        jumlah = st.number_input("Jumlah", value=0.0)
+    if st.button("Tambah"):
+        if uraian and kategori:
+            st.session_state.data[menu] = pd.concat([
+                st.session_state.data[menu],
+                pd.DataFrame([{"Uraian": uraian, "Kategori": kategori, "Jumlah": jumlah}])
+            ], ignore_index=True)
+        else:
+            st.warning("Mohon lengkapi uraian dan kategori.")
+
+st.dataframe(st.session_state.data[menu], use_container_width=True)
+
+# Export PDF
+def export_pdf():
+    df = st.session_state.data[menu]
+    template_path = os.path.join(os.path.dirname(__file__), "pdf_template.html")
+    with open(template_path) as file_:
+        template = Template(file_.read())
+
+    html_out = template.render(
+        nama_bumdes=nama_bumdes,
+        desa=desa,
+        tahun=tahun,
+        judul=menu,
+        tabel=df.to_dict(orient="records")
+    )
+
+    output_path = os.path.join(os.path.dirname(__file__), "laporan.pdf")
+    pdfkit.from_string(html_out, output_path)
+    with open(output_path, "rb") as pdf_file:
+        st.download_button("📄 Unduh PDF", data=pdf_file, file_name="laporan_keuangan.pdf", mime="application/pdf")
+
+export_pdf()
