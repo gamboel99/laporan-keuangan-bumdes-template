@@ -43,6 +43,7 @@ kode_akun = [
     "2.2.1", "2.2.2", "2.2.3",
     "3.1.1", "3.1.2", "3.1.3", "3.1.4", "3.1.5"
 ]
+
 nama_akun = [
     "Penjualan Barang Dagang", "Pendapatan Jasa", "Pendapatan Sewa Aset", "Pendapatan Simpan Pinjam", "Pendapatan Usaha Tani", "Pendapatan Wisata", "Pendapatan Lainnya",
     "Pembelian Barang Dagang", "Beban Produksi", "Beban Pemeliharaan Usaha", "Beban Penyusutan Aset Usaha", "Bahan Baku / Operasional", "Beban Lainnya",
@@ -54,14 +55,28 @@ nama_akun = [
     "Pinjaman Bank", "Pinjaman Pemerintah", "Utang Pihak Ketiga",
     "Modal Desa", "Modal Pihak Ketiga", "Saldo Laba Ditahan", "Laba Tahun Berjalan", "Cadangan Sosial / Investasi"
 ]
+
 posisi = (
     ["Pendapatan"] * 7 + ["HPP"] * 6 + ["Beban Usaha"] * 11 + ["Non-Usaha"] * 6 +
     ["Aset Lancar"] * 8 + ["Aset Tetap"] * 9 + ["Kewajiban Pendek"] * 5 + ["Kewajiban Panjang"] * 3 + ["Ekuitas"] * 5
 )
+
 tipe = (
     ["Kredit"] * 7 + ["Debit"] * 6 + ["Debit"] * 11 + ["Kredit"] * 3 + ["Debit"] * 2 + ["Kredit"] * 1 +
     ["Debit"] * 5 + ["Debit"] * 9 + ["Kredit"] * 5 + ["Kredit"] * 3 + ["Kredit"] * 5
 )
+
+# Cek ulang total
+assert len(kode_akun) == len(nama_akun) == len(posisi) == len(tipe), \
+    f"Mismatch panjang list: kode={len(kode_akun)}, nama={len(nama_akun)}, posisi={len(posisi)}, tipe={len(tipe)}"
+
+# Buat dataframe
+daftar_akun = pd.DataFrame({
+    "Kode Akun": kode_akun,
+    "Nama Akun": nama_akun,
+    "Posisi": posisi,
+    "Tipe": tipe
+})
 
 # === PASTIKAN SAMA PANJANG ===
 assert len(kode_akun) == len(nama_akun) == len(posisi) == len(tipe), "Jumlah elemen pada daftar akun tidak sama."
