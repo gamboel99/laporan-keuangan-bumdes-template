@@ -24,7 +24,7 @@ ketua_bpd = st.sidebar.text_input("Nama Ketua BPD", "Dwi Purnomo")
 
 # === KOP LAPORAN ===
 st.markdown(f"""
-    <h3 style='text-align:center;'>Laporan Keuangan {nama_bumdes} Desa {desa}</h3>
+    <h3 style='text-align:center;'>Laporan Keuangan {lembaga} {nama_bumdes} Desa {desa}</h3>
     <h4 style='text-align:center;'>Alamat: Jl. Raya Keling, Bukaan, Keling, Kec. Kepung, Kabupaten Kediri, Jawa Timur 64293</h4>
     <hr>
 """, unsafe_allow_html=True)
@@ -46,11 +46,17 @@ if key_gl not in st.session_state:
     st.session_state[key_gl] = pd.DataFrame(columns=["Tanggal", "Kode Akun", "Nama Akun", "Debit", "Kredit", "Keterangan", "Bukti"])
 
 # === DAFTAR AKUN ===
-daftar_akun = pd.DataFrame({
-    "Kode Akun": ["4.1", "5.1", "3.1", "3.2", "1.1", "2.1", "1.2"],
-    "Nama Akun": ["Pendapatan Usaha", "Beban Operasional", "Modal Awal", "Prive", "Kas", "Utang", "Piutang"],
-    "Posisi": ["Laba Rugi", "Laba Rugi", "Ekuitas", "Ekuitas", "Neraca", "Neraca", "Neraca"],
-    "Tipe": ["Kredit", "Debit", "Kredit", "Debit", "Debit", "Kredit", "Debit"]
+daftar_akun = pd.read_excel("daftar_akun_rinci.xlsx") if os.path.exists("daftar_akun_rinci.xlsx") else pd.DataFrame({
+    "Kode Akun": ["4.1", "4.2", "4.3", "4.4", "4.5", "4.6", "4.7", "5.1", "5.2", "5.3", "5.4", "5.5", "5.6",
+                   "5.7", "5.8", "5.9", "5.10", "5.11", "6.1", "6.2", "6.3", "6.4", "6.5", "6.6", "6.7", "6.8"],
+    "Nama Akun": ["Penjualan Barang Dagang", "Pendapatan Jasa", "Pendapatan Sewa Aset", "Pendapatan Unit Simpan Pinjam",
+                   "Pendapatan Usaha Tani", "Pendapatan Unit Wisata", "Pendapatan Lainnya", "Pembelian Barang Dagang",
+                   "Beban Produksi", "Beban Pemeliharaan Usaha", "Beban Penyusutan Aset Usaha", "Beban Operasional Unit Usaha",
+                   "Gaji dan Tunjangan", "Beban Listrik", "Beban Transportasi", "Beban Administrasi", "Beban Sewa Tempat",
+                   "Beban Perlengkapan", "Pendapatan Bunga", "Pendapatan Investasi", "Pendapatan Lain-lain",
+                   "Beban Bunga Pinjaman", "Kerugian Penjualan Aset", "Pajak Penghasilan", "Pajak Final"],
+    "Posisi": ["Laba Rugi"] * 25,
+    "Tipe": ["Kredit"] * 7 + ["Debit"] * 18
 })
 
 with st.expander("📚 Daftar Akun Standar"):
@@ -83,7 +89,7 @@ with st.expander("➕ Tambah Transaksi"):
                     f.write(bukti_file.read())
             else:
                 bukti_path = ""
-            new_row = pd.DataFrame([{ 
+            new_row = pd.DataFrame([{
                 "Tanggal": tanggal.strftime("%Y-%m-%d"),
                 "Kode Akun": kode_akun,
                 "Nama Akun": nama_akun,
@@ -116,87 +122,30 @@ if not df_gl.empty:
 else:
     st.info("Belum ada transaksi.")
 
-# === LAPORAN OTOMATIS ===
-st.header("📊 Laporan Otomatis")
-
-def hitung_total(kode_prefix, jenis):
-    subset = df_gl[df_gl["Kode Akun"].str.startswith(kode_prefix)]
-    return subset[jenis].sum()
-
-pendapatan = hitung_total("4", "Kredit")
-beban = hitung_total("5", "Debit")
-laba_bersih = pendapatan - beban
-kas = hitung_total("1.1", "Debit") - hitung_total("1.1", "Kredit")
-piutang = hitung_total("1.2", "Debit") - hitung_total("1.2", "Kredit")
-utang = hitung_total("2.1", "Kredit") - hitung_total("2.1", "Debit")
-modal_awal = hitung_total("3.1", "Kredit")
-prive = hitung_total("3.2", "Debit")
-modal_akhir = modal_awal + laba_bersih - prive
-
-col1, col2 = st.columns(2)
-
-with col1:
-    st.subheader("📄 Laba Rugi")
-    st.markdown(f"**Pendapatan Usaha:** Rp {pendapatan:,.2f}")
-    st.markdown(f"**Beban Operasional:** Rp {beban:,.2f}")
-    st.markdown(f"**Laba Bersih:** Rp {laba_bersih:,.2f}")
-
-with col2:
-    st.subheader("🧾 Neraca Rinci")
-    st.markdown(f"**Kas:** Rp {kas:,.2f}")
-    st.markdown(f"**Piutang:** Rp {piutang:,.2f}")
-    st.markdown(f"**Utang:** Rp {utang:,.2f}")
-    st.markdown(f"**Modal Akhir:** Rp {modal_akhir:,.2f}")
-
-# === EKSPOR LAPORAN ===
-def export_df(df, nama):
+# === EKSPOR EXCEL ===
+st.subheader("📥 Unduh General Ledger")
+def download_excel(dataframe, filename):
     output = BytesIO()
-    with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
-        df.to_excel(writer, index=False, sheet_name=nama)
+    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+        dataframe.to_excel(writer, index=False, sheet_name='GeneralLedger')
     b64 = base64.b64encode(output.getvalue()).decode()
-    href = f"<a href='data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,{b64}' download='{nama}_{lembaga}_{desa}_{tahun}.xlsx'>📥 Download {nama}</a>"
-    return href
+    return f"<a href='data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,{b64}' download='{filename}'>⬇️ Download Excel</a>"
 
-with st.expander("📥 Unduh Per Laporan"):
-    st.markdown(export_df(df_gl, "GeneralLedger"), unsafe_allow_html=True)
-    df_lr = pd.DataFrame({
-        "Uraian": ["Pendapatan Usaha", "Beban Operasional", "Laba Bersih"],
-        "Jumlah": [pendapatan, beban, laba_bersih]
-    })
-    st.markdown(export_df(df_lr, "LabaRugi"), unsafe_allow_html=True)
+st.markdown(download_excel(df_gl, f"General_Ledger_{lembaga}_{desa}_{tahun}.xlsx"), unsafe_allow_html=True)
 
-    df_nr = pd.DataFrame({
-        "Akun": ["Kas", "Piutang", "Utang", "Modal Akhir"],
-        "Jumlah": [kas, piutang, utang, modal_akhir]
-    })
-    st.markdown(export_df(df_nr, "NeracaRinci"), unsafe_allow_html=True)
+# === PENGOLAHAN DATA LABA RUGI ===
+st.header("📊 Laporan Laba Rugi")
 
-# === LEMBAR PENGESAHAN ===
-st.subheader("📝 Lembar Pengesahan")
-st.markdown(f"""
-    <br><br>
-    <table style='width:100%; text-align:center;'>
-    <tr>
-        <td>Bendahara</td>
-        <td>Direktur {lembaga}</td>
-    </tr>
-    <tr><td><br><br><br></td><td><br><br><br></td></tr>
-    <tr>
-        <td><u>{bendahara}</u></td>
-        <td><u>{direktur}</u></td>
-    </tr>
-    <tr><td><br></td></tr>
-    <tr>
-        <td colspan="2">Mengetahui,</td>
-    </tr>
-    <tr>
-        <td>Kepala Desa</td>
-        <td>Ketua BPD</td>
-    </tr>
-    <tr><td><br><br><br></td><td><br><br><br></td></tr>
-    <tr>
-        <td><u>{kepala_desa}</u></td>
-        <td><u>{ketua_bpd}</u></td>
-    </tr>
-    </table>
-""", unsafe_allow_html=True)
+kategori_pendapatan = daftar_akun[(daftar_akun["Posisi"] == "Laba Rugi") & (daftar_akun["Tipe"] == "Kredit")]["Nama Akun"].tolist()
+kategori_beban = daftar_akun[(daftar_akun["Posisi"] == "Laba Rugi") & (daftar_akun["Tipe"] == "Debit")]["Nama Akun"].tolist()
+
+pendapatan_total = df_gl[df_gl["Nama Akun"].isin(kategori_pendapatan)]["Kredit"].sum()
+beban_total = df_gl[df_gl["Nama Akun"].isin(kategori_beban)]["Debit"].sum()
+laba_bersih = pendapatan_total - beban_total
+
+st.markdown(f"**Total Pendapatan:** Rp {pendapatan_total:,.2f}")
+st.markdown(f"**Total Beban:** Rp {beban_total:,.2f}")
+st.markdown(f"**Laba Bersih:** Rp {laba_bersih:,.2f}")
+
+# === TO BE CONTINUED: ARUS KAS, NERACA, PDF/EXCEL EKSPOR ===
+st.success("✅ Laporan Laba Rugi selesai. Selanjutnya Arus Kas dan Neraca Rinci sedang diproses.")
