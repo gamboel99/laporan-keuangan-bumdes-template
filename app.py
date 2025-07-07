@@ -38,11 +38,12 @@ with col_logo2:
     if os.path.exists("logo_bumdes.png"):
         st.image("logo_bumdes.png", width=80)
 
+st.title(f"📘 Buku Besar ({lembaga})")
+
 # === INISIALISASI ===
 key_gl = f"gl_{lembaga}_{desa}_{tahun}"
 if key_gl not in st.session_state:
     st.session_state[key_gl] = pd.DataFrame(columns=["Tanggal", "Kode Akun", "Nama Akun", "Debit", "Kredit", "Keterangan", "Bukti"])
-df_gl = st.session_state[key_gl]
 
 # === DAFTAR AKUN STANDAR SISKEUDES ===
 kode_akun = [
@@ -58,10 +59,13 @@ kode_akun = [
 ]
 
 nama_akun = [
-    "Penjualan Barang Dagang", "Pendapatan Jasa", "Pendapatan Sewa Aset", "Pendapatan Simpan Pinjam", "Pendapatan Usaha Tani", "Pendapatan Wisata", "Pendapatan Lainnya",
-    "Pembelian Barang Dagang", "Beban Produksi", "Beban Pemeliharaan Usaha", "Beban Penyusutan Aset Usaha", "Bahan Baku / Operasional", "Beban Lainnya",
-    "Gaji dan Tunjangan", "Listrik, Air, Komunikasi", "Transportasi", "Administrasi & Umum", "Sewa Tempat", "Perlengkapan", "Penyusutan Aset Tetap", "Penyuluhan", "Promosi & Publikasi", "Operasional Wisata", "CSR / Kegiatan Desa",
-    "Pendapatan Bunga", "Pendapatan Investasi", "Pendapatan Lain-lain", "Beban Bunga", "Kerugian Penjualan Aset", "Pajak",
+    "Penjualan Barang Dagang", "Pendapatan Jasa", "Pendapatan Sewa Aset", "Pendapatan Simpan Pinjam",
+    "Pendapatan Usaha Tani", "Pendapatan Wisata", "Pendapatan Lainnya",
+    "Pembelian Barang Dagang", "Beban Produksi", "Beban Pemeliharaan Usaha", "Beban Penyusutan Aset Usaha",
+    "Bahan Baku / Operasional", "Beban Lainnya",
+    "Gaji dan Tunjangan", "Listrik, Air, Komunikasi", "Transportasi", "Administrasi & Umum", "Sewa Tempat",
+    "Perlengkapan", "Penyusutan Aset Tetap", "Penyuluhan", "Promosi & Publikasi", "Operasional Wisata", "CSR / Kegiatan Desa",
+    "Pendapatan Bunga", "Pendapatan Investasi", "Pendapatan Lain-lain", "Beban Bunga Pinjaman", "Kerugian Penjualan Aset", "Pajak",
     "Kas", "Bank", "Piutang Usaha", "Persediaan Dagang", "Persediaan Bahan Baku", "Uang Muka", "Investasi Pendek", "Pendapatan Diterima Di Muka",
     "Tanah", "Bangunan", "Peralatan", "Kendaraan", "Inventaris", "Aset Tetap Lainnya", "Akumulasi Penyusutan", "Investasi Panjang", "Aset Lain-lain",
     "Utang Usaha", "Utang Gaji", "Utang Pajak", "Pendapatan Diterima Di Muka", "Utang Lain-lain",
@@ -69,15 +73,33 @@ nama_akun = [
     "Modal Desa", "Modal Pihak Ketiga", "Saldo Laba Ditahan", "Laba Tahun Berjalan", "Cadangan Sosial / Investasi"
 ]
 
-posisi = [
-    "Pendapatan"]*7 + ["HPP"]*6 + ["Beban Usaha"]*11 + ["Non-Usaha"]*6 + ["Aset Lancar"]*8 + ["Aset Tetap"]*9 + ["Kewajiban Pendek"]*5 + ["Kewajiban Panjang"]*3 + ["Ekuitas"]*5
+posisi = (
+    ["Pendapatan"] * 7 +
+    ["HPP"] * 6 +
+    ["Beban Usaha"] * 11 +
+    ["Non-Usaha"] * 6 +
+    ["Aset Lancar"] * 8 +
+    ["Aset Tetap"] * 9 +
+    ["Kewajiban Pendek"] * 5 +
+    ["Kewajiban Panjang"] * 3 +
+    ["Ekuitas"] * 5
+)
 
-tipe = [
-    "Kredit"]*7 + ["Debit"]*6 + ["Debit"]*11 + ["Kredit"]*3 + ["Debit"]*3 + ["Kredit"]*1 + ["Debit"]*5 + ["Debit"]*9 + ["Kredit"]*5 + ["Kredit"]*3 + ["Kredit"]*5
+tipe = (
+    ["Kredit"] * 7 +
+    ["Debit"] * 6 +
+    ["Debit"] * 11 +
+    ["Kredit", "Kredit", "Kredit", "Debit", "Debit", "Debit"] +
+    ["Debit"] * 8 +
+    ["Debit"] * 9 +
+    ["Kredit"] * 5 +
+    ["Kredit"] * 3 +
+    ["Kredit"] * 5
+)
 
-# Pastikan semua panjang sama
 assert len(kode_akun) == len(nama_akun) == len(posisi) == len(tipe), "Jumlah elemen pada daftar akun tidak sama."
 
+# Buat DataFrame daftar akun
 daftar_akun = pd.DataFrame({
     "Kode Akun": kode_akun,
     "Nama Akun": nama_akun,
@@ -88,26 +110,7 @@ daftar_akun = pd.DataFrame({
 with st.expander("📚 Daftar Akun Standar SISKEUDES"):
     st.dataframe(daftar_akun, use_container_width=True)
 
-# === TABS UNTUK LAPORAN ===
-tabs = st.tabs(["📘 General Ledger", "📊 Laba Rugi", "📈 Neraca", "💰 Arus Kas"])
-
-with tabs[0]:
-    st.subheader("📘 Buku Besar / General Ledger")
-    st.write("(fitur input, hapus, upload bukti menyusul di sini)")
-
-with tabs[1]:
-    st.subheader("📊 Laporan Laba Rugi")
-    st.write("(otomatisasi berdasarkan akun akan ditampilkan di sini)")
-
-with tabs[2]:
-    st.subheader("📈 Laporan Neraca")
-    st.write("(otomatisasi berdasarkan akun akan ditampilkan di sini)")
-
-with tabs[3]:
-    st.subheader("💰 Laporan Arus Kas")
-    st.write("(otomatisasi berdasarkan akun akan ditampilkan di sini)")
-
-# === PENGESAHAN ===
+# LEMBAR PENGESAHAN
 st.markdown("""
     <br><br><br>
     <table width='100%' style='text-align:center;'>
@@ -122,4 +125,4 @@ st.markdown("""
     <br><br>
 """.format(bendahara, direktur, kepala_desa, ketua_bpd), unsafe_allow_html=True)
 
-st.success("✅ Struktur akun lengkap, lembar pengesahan, dan tampilan tab laporan berhasil disiapkan. Siap lanjut otomatisasi isi laporan di masing-masing tab.")
+st.success("✅ Struktur akun lengkap dan lembar pengesahan otomatis berhasil dimuat. Siap lanjut ke Laba Rugi, Neraca, dan Arus Kas otomatis.")
