@@ -6,25 +6,36 @@ import os
 
 st.set_page_config(page_title="Laporan Keuangan BUMDes", layout="wide")
 
-# === IDENTITAS ===
-st.sidebar.title("Identitas BUMDes")
-nama_bumdes = st.sidebar.text_input("Nama BUMDes", "Buwana Raharja")
-desa = st.sidebar.text_input("Desa", "Keling")
+# === PILIHAN MULTI LEMBAGA DAN DESA ===
+st.sidebar.title("🔰 Pilih Unit Lembaga")
+lembaga = st.sidebar.selectbox("Lembaga", ["BUMDes", "PKK", "Karang Taruna", "LPMD", "BPD"])
+desa = st.sidebar.text_input("Nama Desa", "Keling")
+nama_bumdes = st.sidebar.text_input("Nama Lembaga", "Buwana Raharja")
 tahun = st.sidebar.number_input("Tahun Laporan", 2025, step=1)
 
 # === PEJABAT UNTUK PENGESAHAN ===
 st.sidebar.markdown("---")
 st.sidebar.subheader("Pejabat Tanda Tangan")
 bendahara = st.sidebar.text_input("Nama Bendahara", "Siti Aminah")
-direktur = st.sidebar.text_input("Nama Direktur Utama", "Bambang Setiawan")
+direktur = st.sidebar.text_input("Nama Ketua/Pimpinan", "Bambang Setiawan")
 kepala_desa = st.sidebar.text_input("Nama Kepala Desa", "Sugeng Riyadi")
 ketua_bpd = st.sidebar.text_input("Nama Ketua BPD", "Dwi Purnomo")
 
-st.title("📘 Buku Besar (General Ledger)")
+st.title(f"📘 Buku Besar ({lembaga})")
+
+# === LOGO ===
+col_logo1, col_logo2 = st.columns([1, 6])
+with col_logo1:
+    if os.path.exists("logo_pemdes.png"):
+        st.image("logo_pemdes.png", width=80)
+with col_logo2:
+    if os.path.exists("logo_bumdes.png"):
+        st.image("logo_bumdes.png", width=80)
 
 # === INISIALISASI ===
-if "gl" not in st.session_state:
-    st.session_state.gl = pd.DataFrame(columns=["Tanggal", "Akun", "Debit", "Kredit", "Keterangan", "Bukti"])
+key_gl = f"gl_{lembaga}_{desa}_{tahun}"
+if key_gl not in st.session_state:
+    st.session_state[key_gl] = pd.DataFrame(columns=["Tanggal", "Akun", "Debit", "Kredit", "Keterangan", "Bukti"])
 
 # === FORM TAMBAH TRANSAKSI ===
 with st.expander("➕ Tambah Transaksi"):
@@ -60,14 +71,14 @@ with st.expander("➕ Tambah Transaksi"):
                 "Keterangan": keterangan,
                 "Bukti": bukti_path
             }])
-            st.session_state.gl = pd.concat([st.session_state.gl, new_row], ignore_index=True)
+            st.session_state[key_gl] = pd.concat([st.session_state[key_gl], new_row], ignore_index=True)
             st.success("✅ Transaksi berhasil disimpan.")
         else:
             st.warning("⚠️ Lengkapi akun dan nilai debit/kredit.")
 
 # === TAMPILKAN GL ===
 st.subheader("📋 Daftar Transaksi")
-gl_df = st.session_state.gl.copy()
+gl_df = st.session_state[key_gl].copy()
 if not gl_df.empty:
     for idx, row in gl_df.iterrows():
         st.write(f"**{row['Tanggal']} - {row['Akun']}** | Debit: Rp{row['Debit']}, Kredit: Rp{row['Kredit']}")
@@ -78,7 +89,7 @@ if not gl_df.empty:
             else:
                 st.image(row['Bukti'], width=200)
     if st.button("🗑️ Hapus Semua Transaksi"):
-        st.session_state.gl = pd.DataFrame(columns=gl_df.columns)
+        st.session_state[key_gl] = pd.DataFrame(columns=gl_df.columns)
         st.success("✅ Semua transaksi dihapus.")
 else:
     st.info("Belum ada transaksi yang dimasukkan.")
@@ -88,7 +99,7 @@ def total_akun(df, kata):
     return df[df["Akun"].str.contains(kata, case=False, na=False)]["Debit"].sum() - df[df["Akun"].str.contains(kata, case=False, na=False)]["Kredit"].sum()
 
 # === HITUNG OTOMATIS ===
-df = st.session_state.gl
+df = st.session_state[key_gl]
 pendapatan = total_akun(df, "Pendapatan")
 beban = total_akun(df, "Beban")
 laba_bersih = pendapatan - beban
@@ -141,8 +152,9 @@ with col2:
 st.subheader("📥 Unduh Ikhtisar")
 def export_html():
     html = f"""
-    <h2>Ikhtisar Laporan Keuangan BUMDes</h2>
-    <p><strong>{nama_bumdes} - Desa {desa} - Tahun {tahun}</strong></p>
+    <h2 style='text-align:center;'>Ikhtisar Laporan Keuangan - {lembaga}</h2>
+    <p style='text-align:center;'><strong>{nama_bumdes} - Desa {desa} - Tahun {tahun}</strong></p>
+    <hr>
     <h3>Laba Rugi</h3>
     <ul>
         <li>Pendapatan: Rp {pendapatan:,.2f}</li>
@@ -171,39 +183,22 @@ def export_html():
         <li>Total Kewajiban + Ekuitas: Rp {total_ke:,.2f}</li>
     </ul>
     <br><br>
-    <p style="text-align: right;">Keling, Juli {tahun}</p>
-    <table style="width:100%; text-align: center;">
-      <tr>
-        <td>Dibuat oleh</td>
-        <td>Disetujui oleh</td>
-      </tr>
-      <tr>
-        <td>Bendahara</td>
-        <td>Direktur Utama BUMDes</td>
-      </tr>
-      <tr><td colspan="2"><br><br><br><br></td></tr>
-      <tr>
-        <td><u>{bendahara}</u></td>
-        <td><u>{direktur}</u></td>
-      </tr>
+    <p style="text-align:right;">{desa}, Juli {tahun}</p>
+    <table style="width:100%; text-align:center;">
+      <tr><td>Dibuat oleh,</td><td>Disetujui oleh,</td></tr>
+      <tr><td>Bendahara</td><td>Pimpinan {lembaga}</td></tr>
+      <tr><td><br><br><br><br></td><td><br><br><br><br></td></tr>
+      <tr><td><u>{bendahara}</u></td><td><u>{direktur}</u></td></tr>
     </table>
     <br><br>
-    <table style="width:100%; text-align: center;">
-      <tr>
-        <td>Mengetahui,</td>
-      </tr>
-      <tr>
-        <td>Kepala Desa</td>
-        <td>Ketua BPD</td>
-      </tr>
-      <tr><td colspan="2"><br><br><br><br></td></tr>
-      <tr>
-        <td><u>{kepala_desa}</u></td>
-        <td><u>{ketua_bpd}</u></td>
-      </tr>
+    <table style="width:100%; text-align:center;">
+      <tr><td>Mengetahui,</td></tr>
+      <tr><td>Kepala Desa</td><td>Ketua BPD</td></tr>
+      <tr><td><br><br><br><br></td><td><br><br><br><br></td></tr>
+      <tr><td><u>{kepala_desa}</u></td><td><u>{ketua_bpd}</u></td></tr>
     </table>
     """
     b64 = base64.b64encode(html.encode()).decode()
-    return f'<a href="data:text/html;base64,{b64}" download="ikhtisar_laporan.html">📤 Unduh HTML</a>'
+    return f'<a href="data:text/html;base64,{b64}" download="ikhtisar_{lembaga}_{desa}_{tahun}.html">📤 Unduh HTML</a>'
 
 st.markdown(export_html(), unsafe_allow_html=True)
