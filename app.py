@@ -3,7 +3,6 @@ import pandas as pd
 import base64
 from datetime import datetime
 import os
-from io import BytesIO
 
 st.set_page_config(page_title="Laporan Keuangan BUMDes", layout="wide")
 
@@ -22,75 +21,188 @@ direktur = st.sidebar.text_input("Nama Ketua/Pimpinan", "Bambang Setiawan")
 kepala_desa = st.sidebar.text_input("Nama Kepala Desa", "Sugeng Riyadi")
 ketua_bpd = st.sidebar.text_input("Nama Ketua BPD", "Dwi Purnomo")
 
-# === KOP LAPORAN ===
-st.markdown(f"""
-    <h3 style='text-align:center;'>Laporan Keuangan {nama_bumdes} Desa {desa}</h3>
-    <h4 style='text-align:center;'>Alamat: Jl. Raya Keling, Bukaan, Keling, Kec. Kepung, Kabupaten Kediri, Jawa Timur 64293</h4>
-    <hr>
-""", unsafe_allow_html=True)
-
 # === LOGO ===
-col_logo1, col_logo2 = st.columns([1, 6])
+col_logo1, col_logo2 = st.columns([1, 1])
 with col_logo1:
     if os.path.exists("logo_pemdes.png"):
-        st.image("logo_pemdes.png", width=80)
+        st.image("logo_pemdes.png", width=100)
+    else:
+        st.text("Logo Pemdes tidak ditemukan")
 with col_logo2:
     if os.path.exists("logo_bumdes.png"):
-        st.image("logo_bumdes.png", width=80)
+        st.image("logo_bumdes.png", width=100)
+    else:
+        st.text("Logo BUMDes tidak ditemukan")
 
 st.title(f"📘 Buku Besar ({lembaga})")
 
 # === INISIALISASI ===
 key_gl = f"gl_{lembaga}_{desa}_{tahun}"
 if key_gl not in st.session_state:
-    st.session_state[key_gl] = pd.DataFrame(columns=["Tanggal", "Kode Akun", "Nama Akun", "Debit", "Kredit", "Keterangan", "Bukti"])
+    st.session_state[key_gl] = pd.DataFrame(columns=["Tanggal", "Akun", "Debit", "Kredit", "Keterangan", "Bukti"])
 
-# === DAFTAR AKUN ===
-daftar_akun = pd.DataFrame({
-    "Kode Akun": [
-        "4.1.1", "4.1.2", "4.1.3", "4.1.4", "4.1.5", "4.1.6", "4.1.7",
-        "5.1.1", "5.1.2", "5.1.3", "5.1.4", "5.1.5",
-        "5.2.1", "5.2.2", "5.2.3", "5.2.4", "5.2.5", "5.2.6", "5.2.7", "5.2.8", "5.2.9", "5.2.10", "5.2.11",
-        "4.2.1", "4.2.2", "4.2.3", "5.3.1", "5.3.2",
-        "5.4.1", "5.4.2",
-        "1.1.1", "1.1.2", "1.1.3", "1.1.4", "1.1.5", "1.1.6", "1.1.7", "1.1.8",
-        "1.2.1", "1.2.2", "1.2.3", "1.2.4", "1.2.5", "1.2.6", "1.2.7", "1.2.8", "1.2.9",
-        "2.1.1", "2.1.2", "2.1.3", "2.1.4", "2.1.5",
-        "2.2.1", "2.2.2", "2.2.3",
-        "3.1.1", "3.1.2", "3.1.3", "3.1.4", "3.1.5"
-    ],
-    "Nama Akun": [
-        "Penjualan Barang Dagang", "Pendapatan Jasa", "Pendapatan Sewa Aset", "Pendapatan Unit Simpan Pinjam",
-        "Pendapatan Usaha Tani", "Pendapatan Unit Wisata", "Pendapatan Lainnya",
-        "Pembelian Barang Dagang", "Beban Produksi", "Beban Pemeliharaan Usaha", "Beban Penyusutan Aset Usaha", "Beban Operasional Unit Usaha",
-        "Gaji dan Tunjangan", "Listrik, Air, dan Komunikasi", "Transportasi", "Administrasi dan Umum", "Sewa Tempat", "Perlengkapan",
-        "Penyusutan Aset Tetap", "Penyuluhan dan Pelatihan", "Promosi dan Publikasi", "Beban Operasional Unit Wisata", "Beban Sosial / CSR",
-        "Pendapatan Bunga", "Pendapatan Investasi", "Pendapatan Lain-lain", "Beban Bunga Pinjaman", "Kerugian Penjualan Aset",
-        "Pajak Penghasilan", "Pajak Final",
-        "Kas", "Bank", "Piutang Usaha", "Persediaan Barang Dagang", "Persediaan Bahan Baku",
-        "Uang Muka / Panjar", "Investasi Jangka Pendek", "Pendapatan yang Masih Harus Diterima",
-        "Tanah", "Bangunan", "Peralatan Usaha", "Kendaraan", "Perabot dan Inventaris",
-        "Aset Tetap Lainnya", "Akumulasi Penyusutan", "Investasi Jangka Panjang", "Aset Lain-lain",
-        "Utang Usaha", "Utang Gaji", "Utang Pajak", "Pendapatan Diterima di Muka", "Utang Lain-lain",
-        "Pinjaman Bank", "Pinjaman Program Pemerintah", "Utang kepada Pihak Ketiga",
-        "Modal Penyertaan Desa", "Modal Pihak Ketiga", "Saldo Laba", "Laba Tahun Berjalan", "Cadangan Dana Sosial"
-    ],
-    "Posisi": [
-        *["Laba Rugi"] * 26, *["Neraca"] * 34
-    ],
-    "Tipe": [
-        *["Kredit"] * 7,
-        *["Debit"] * 5,
-        *["Debit"] * 11,
-        "Kredit", "Kredit", "Kredit", "Debit", "Debit",
-        "Debit", "Debit",
-        *["Debit"] * 17,
-        *["Kredit"] * 8,
-        *["Kredit"] * 5
-    ]
-})
+# === FORM TAMBAH TRANSAKSI ===
+with st.expander("➕ Tambah Transaksi"):
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        tanggal = st.date_input("Tanggal", datetime.today())
+    with col2:
+        akun = st.text_input("Akun")
+    with col3:
+        keterangan = st.text_input("Keterangan")
 
-with st.expander("📚 Daftar Akun Standar"):
-    st.dataframe(daftar_akun, use_container_width=True)
+    col4, col5, col6 = st.columns(3)
+    with col4:
+        debit = st.number_input("Debit", min_value=0.0, format="%.2f")
+    with col5:
+        kredit = st.number_input("Kredit", min_value=0.0, format="%.2f")
+    with col6:
+        bukti_file = st.file_uploader("Upload Nota/Bukti", type=["png", "jpg", "jpeg", "pdf"])
 
-# Lanjutkan pengembangan laporan lainnya di bawah sini...
+    if st.button("💾 Simpan Transaksi"):
+        if akun and (debit > 0 or kredit > 0):
+            if bukti_file:
+                bukti_path = f"bukti_{datetime.now().strftime('%Y%m%d%H%M%S')}_{bukti_file.name}"
+                with open(bukti_path, "wb") as f:
+                    f.write(bukti_file.read())
+            else:
+                bukti_path = ""
+            new_row = pd.DataFrame([{
+                "Tanggal": tanggal.strftime("%Y-%m-%d"),
+                "Akun": akun,
+                "Debit": debit,
+                "Kredit": kredit,
+                "Keterangan": keterangan,
+                "Bukti": bukti_path
+            }])
+            st.session_state[key_gl] = pd.concat([st.session_state[key_gl], new_row], ignore_index=True)
+            st.success("✅ Transaksi berhasil disimpan.")
+        else:
+            st.warning("⚠️ Lengkapi akun dan nilai debit/kredit.")
+
+# === TAMPILKAN GL ===
+st.subheader("📋 Daftar Transaksi")
+gl_df = st.session_state[key_gl].copy()
+if not gl_df.empty:
+    for idx, row in gl_df.iterrows():
+        st.write(f"**{row['Tanggal']} - {row['Akun']}** | Debit: Rp{row['Debit']}, Kredit: Rp{row['Kredit']}")
+        st.caption(row['Keterangan'])
+        if row['Bukti'] and os.path.exists(row['Bukti']):
+            if row['Bukti'].endswith(".pdf"):
+                st.markdown(f"[📄 Lihat Bukti PDF]({row['Bukti']})")
+            else:
+                st.image(row['Bukti'], width=200)
+    if st.button("🗑️ Hapus Semua Transaksi"):
+        st.session_state[key_gl] = pd.DataFrame(columns=gl_df.columns)
+        st.success("✅ Semua transaksi dihapus.")
+else:
+    st.info("Belum ada transaksi yang dimasukkan.")
+
+# === FUNGSI BANTU ===
+def total_akun(df, kata):
+    return df[df["Akun"].str.contains(kata, case=False, na=False)]["Debit"].sum() - df[df["Akun"].str.contains(kata, case=False, na=False)]["Kredit"].sum()
+
+# === HITUNG OTOMATIS ===
+df = st.session_state[key_gl]
+pendapatan = total_akun(df, "Pendapatan")
+beban = total_akun(df, "Beban")
+laba_bersih = pendapatan - beban
+
+modal_awal = total_akun(df, "Modal")
+penambahan_modal = total_akun(df, "Penambahan Modal")
+prive = total_akun(df, "Prive")
+modal_akhir = modal_awal + laba_bersih + penambahan_modal - prive
+
+kas_masuk = df[df["Akun"].str.contains("Kas", case=False)]["Debit"].sum()
+kas_keluar = df[df["Akun"].str.contains("Kas", case=False)]["Kredit"].sum()
+kas_akhir = kas_masuk - kas_keluar
+
+piutang = total_akun(df, "Piutang")
+peralatan = total_akun(df, "Peralatan")
+utang = total_akun(df, "Utang")
+aset = kas_akhir + piutang + peralatan
+total_ke = utang + modal_akhir
+
+# === TAMPILKAN RINGKASAN ===
+st.header("📑 Laporan Keuangan Otomatis")
+col1, col2 = st.columns(2)
+
+with col1:
+    st.subheader("📄 Laba Rugi")
+    st.markdown(f"- **Pendapatan:** Rp {pendapatan:,.2f}")
+    st.markdown(f"- **Beban:** Rp {beban:,.2f}")
+    st.markdown(f"- **Laba Bersih:** Rp {laba_bersih:,.2f}")
+
+    st.subheader("🧾 Perubahan Ekuitas")
+    st.markdown(f"- **Modal Awal:** Rp {modal_awal:,.2f}")
+    st.markdown(f"- **Penambahan Modal:** Rp {penambahan_modal:,.2f}")
+    st.markdown(f"- **Prive:** Rp {prive:,.2f}")
+    st.markdown(f"- **Laba Tahun Berjalan:** Rp {laba_bersih:,.2f}")
+    st.markdown(f"- **Modal Akhir:** Rp {modal_akhir:,.2f}")
+
+with col2:
+    st.subheader("💰 Arus Kas")
+    st.markdown(f"- **Kas Masuk:** Rp {kas_masuk:,.2f}")
+    st.markdown(f"- **Kas Keluar:** Rp {kas_keluar:,.2f}")
+    st.markdown(f"- **Saldo Kas Akhir:** Rp {kas_akhir:,.2f}")
+
+    st.subheader("📊 Neraca")
+    st.markdown(f"- **Aset (Kas + Piutang + Peralatan):** Rp {aset:,.2f}")
+    st.markdown(f"- **Utang:** Rp {utang:,.2f}")
+    st.markdown(f"- **Ekuitas:** Rp {modal_akhir:,.2f}")
+    st.markdown(f"- **Total Kewajiban + Ekuitas:** Rp {total_ke:,.2f}")
+
+# === EKSPOR HTML ===
+st.subheader("📥 Unduh Ikhtisar")
+def export_html():
+    html = f"""
+    <h2 style='text-align:center;'>Ikhtisar Laporan Keuangan - {lembaga}</h2>
+    <p style='text-align:center;'><strong>{nama_bumdes} - Desa {desa} - Tahun {tahun}</strong></p>
+    <hr>
+    <h3>Laba Rugi</h3>
+    <ul>
+        <li>Pendapatan: Rp {pendapatan:,.2f}</li>
+        <li>Beban: Rp {beban:,.2f}</li>
+        <li>Laba Bersih: Rp {laba_bersih:,.2f}</li>
+    </ul>
+    <h3>Perubahan Ekuitas</h3>
+    <ul>
+        <li>Modal Awal: Rp {modal_awal:,.2f}</li>
+        <li>Penambahan Modal: Rp {penambahan_modal:,.2f}</li>
+        <li>Prive: Rp {prive:,.2f}</li>
+        <li>Laba Tahun Berjalan: Rp {laba_bersih:,.2f}</li>
+        <li>Modal Akhir: Rp {modal_akhir:,.2f}</li>
+    </ul>
+    <h3>Arus Kas</h3>
+    <ul>
+        <li>Kas Masuk: Rp {kas_masuk:,.2f}</li>
+        <li>Kas Keluar: Rp {kas_keluar:,.2f}</li>
+        <li>Saldo Kas Akhir: Rp {kas_akhir:,.2f}</li>
+    </ul>
+    <h3>Neraca</h3>
+    <ul>
+        <li>Aset: Rp {aset:,.2f}</li>
+        <li>Utang: Rp {utang:,.2f}</li>
+        <li>Ekuitas: Rp {modal_akhir:,.2f}</li>
+        <li>Total Kewajiban + Ekuitas: Rp {total_ke:,.2f}</li>
+    </ul>
+    <br><br>
+    <p style="text-align:right;">{desa}, Juli {tahun}</p>
+    <table style="width:100%; text-align:center;">
+      <tr><td>Dibuat oleh,</td><td>Disetujui oleh,</td></tr>
+      <tr><td>Bendahara</td><td>Pimpinan {lembaga}</td></tr>
+      <tr><td><br><br><br><br></td><td><br><br><br><br></td></tr>
+      <tr><td><u>{bendahara}</u></td><td><u>{direktur}</u></td></tr>
+    </table>
+    <br><br>
+    <table style="width:100%; text-align:center;">
+      <tr><td>Mengetahui,</td></tr>
+      <tr><td>Kepala Desa</td><td>Ketua BPD</td></tr>
+      <tr><td><br><br><br><br></td><td><br><br><br><br></td></tr>
+      <tr><td><u>{kepala_desa}</u></td><td><u>{ketua_bpd}</u></td></tr>
+    </table>
+    """
+    b64 = base64.b64encode(html.encode()).decode()
+    return f'<a href="data:text/html;base64,{b64}" download="ikhtisar_{lembaga}_{desa}_{tahun}.html">📤 Unduh HTML</a>'
+
+st.markdown(export_html(), unsafe_allow_html=True)
