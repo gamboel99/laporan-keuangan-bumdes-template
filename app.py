@@ -23,8 +23,8 @@ kepala_desa = st.sidebar.text_input("Nama Kepala Desa", "Sugeng Riyadi")
 ketua_bpd = st.sidebar.text_input("Nama Ketua BPD", "Dwi Purnomo")
 
 # === KOP LAPORAN ===
-st.markdown("""
-    <h3 style='text-align:center;'>Laporan Keuangan BUMDes Buwana Raharja Desa Keling</h3>
+st.markdown(f"""
+    <h3 style='text-align:center;'>Laporan Keuangan {nama_bumdes} Desa {desa}</h3>
     <h4 style='text-align:center;'>Alamat: Jl. Raya Keling, Bukaan, Keling, Kec. Kepung, Kabupaten Kediri, Jawa Timur 64293</h4>
     <hr>
 """, unsafe_allow_html=True)
@@ -128,47 +128,28 @@ def download_excel(dataframe, filename):
 st.markdown(download_excel(df_gl, f"General_Ledger_{lembaga}_{desa}_{tahun}.xlsx"), unsafe_allow_html=True)
 
 # === LEMBAR PENGESAHAN ===
-st.subheader("🖊️ Lembar Pengesahan")
-
-ttd_html = f"""
-<br><br><br>
-<table style='width:100%; text-align:center; font-size:16px;'>
-  <tr>
-    <td><b>Dibuat oleh</b></td>
-    <td><b>Disetujui oleh</b></td>
-  </tr>
-  <tr>
-    <td><b>Bendahara</b></td>
-    <td><b>Direktur {lembaga}</b></td>
-  </tr>
-  <tr><td><br><br><br></td><td><br><br><br></td></tr>
-  <tr>
-    <td><u>{bendahara}</u></td>
-    <td><u>{direktur}</u></td>
-  </tr>
+st.subheader("📝 Lembar Pengesahan")
+st.markdown(f"""
+<table style='text-align:center; width:100%;'>
+<tr>
+  <td><strong>Disusun Oleh</strong></td>
+  <td><strong>Disetujui Oleh</strong></td>
+</tr>
+<tr>
+  <td><br><br><br><u>{bendahara}</u><br>Bendahara</td>
+  <td><br><br><br><u>{direktur}</u><br>Direktur/Pimpinan</td>
+</tr>
+<tr><td colspan='2'><br><br></td></tr>
+<tr>
+  <td><strong>Mengetahui</strong></td>
+  <td><strong>Mengetahui</strong></td>
+</tr>
+<tr>
+  <td><br><br><br><u>{kepala_desa}</u><br>Kepala Desa</td>
+  <td><br><br><br><u>{ketua_bpd}</u><br>Ketua BPD</td>
+</tr>
 </table>
-<br><br>
-<table style='width:100%; text-align:center; font-size:16px;'>
-  <tr>
-    <td><b>Mengetahui</b></td>
-    <td></td>
-    <td><b>Mengetahui</b></td>
-  </tr>
-  <tr>
-    <td><b>Kepala Desa {desa}</b></td>
-    <td></td>
-    <td><b>Ketua BPD</b></td>
-  </tr>
-  <tr><td><br><br><br></td><td></td><td><br><br><br></td></tr>
-  <tr>
-    <td><u>{kepala_desa}</u></td>
-    <td></td>
-    <td><u>{ketua_bpd}</u></td>
-  </tr>
-</table>
-"""
-
-st.markdown(ttd_html, unsafe_allow_html=True)
+""", unsafe_allow_html=True)
 
 # === NEXT STEP ===
 st.success("✅ General Ledger siap. Silakan lanjut untuk Laba Rugi, Arus Kas, Neraca rinci, dan PDF.")
