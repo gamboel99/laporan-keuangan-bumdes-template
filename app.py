@@ -83,7 +83,7 @@ with st.expander("➕ Tambah Transaksi"):
                     f.write(bukti_file.read())
             else:
                 bukti_path = ""
-            new_row = pd.DataFrame([{
+            new_row = pd.DataFrame([{ 
                 "Tanggal": tanggal.strftime("%Y-%m-%d"),
                 "Kode Akun": kode_akun,
                 "Nama Akun": nama_akun,
@@ -116,40 +116,87 @@ if not df_gl.empty:
 else:
     st.info("Belum ada transaksi.")
 
-# === EKSPOR EXCEL ===
-st.subheader("📥 Unduh General Ledger")
-def download_excel(dataframe, filename):
-    output = BytesIO()
-    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-        dataframe.to_excel(writer, index=False, sheet_name='GeneralLedger')
-    b64 = base64.b64encode(output.getvalue()).decode()
-    return f"<a href='data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,{b64}' download='{filename}'>⬇️ Download Excel</a>"
+# === LAPORAN OTOMATIS ===
+st.header("📊 Laporan Otomatis")
 
-st.markdown(download_excel(df_gl, f"General_Ledger_{lembaga}_{desa}_{tahun}.xlsx"), unsafe_allow_html=True)
+def hitung_total(kode_prefix, jenis):
+    subset = df_gl[df_gl["Kode Akun"].str.startswith(kode_prefix)]
+    return subset[jenis].sum()
+
+pendapatan = hitung_total("4", "Kredit")
+beban = hitung_total("5", "Debit")
+laba_bersih = pendapatan - beban
+kas = hitung_total("1.1", "Debit") - hitung_total("1.1", "Kredit")
+piutang = hitung_total("1.2", "Debit") - hitung_total("1.2", "Kredit")
+utang = hitung_total("2.1", "Kredit") - hitung_total("2.1", "Debit")
+modal_awal = hitung_total("3.1", "Kredit")
+prive = hitung_total("3.2", "Debit")
+modal_akhir = modal_awal + laba_bersih - prive
+
+col1, col2 = st.columns(2)
+
+with col1:
+    st.subheader("📄 Laba Rugi")
+    st.markdown(f"**Pendapatan Usaha:** Rp {pendapatan:,.2f}")
+    st.markdown(f"**Beban Operasional:** Rp {beban:,.2f}")
+    st.markdown(f"**Laba Bersih:** Rp {laba_bersih:,.2f}")
+
+with col2:
+    st.subheader("🧾 Neraca Rinci")
+    st.markdown(f"**Kas:** Rp {kas:,.2f}")
+    st.markdown(f"**Piutang:** Rp {piutang:,.2f}")
+    st.markdown(f"**Utang:** Rp {utang:,.2f}")
+    st.markdown(f"**Modal Akhir:** Rp {modal_akhir:,.2f}")
+
+# === EKSPOR LAPORAN ===
+def export_df(df, nama):
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
+        df.to_excel(writer, index=False, sheet_name=nama)
+    b64 = base64.b64encode(output.getvalue()).decode()
+    href = f"<a href='data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,{b64}' download='{nama}_{lembaga}_{desa}_{tahun}.xlsx'>📥 Download {nama}</a>"
+    return href
+
+with st.expander("📥 Unduh Per Laporan"):
+    st.markdown(export_df(df_gl, "GeneralLedger"), unsafe_allow_html=True)
+    df_lr = pd.DataFrame({
+        "Uraian": ["Pendapatan Usaha", "Beban Operasional", "Laba Bersih"],
+        "Jumlah": [pendapatan, beban, laba_bersih]
+    })
+    st.markdown(export_df(df_lr, "LabaRugi"), unsafe_allow_html=True)
+
+    df_nr = pd.DataFrame({
+        "Akun": ["Kas", "Piutang", "Utang", "Modal Akhir"],
+        "Jumlah": [kas, piutang, utang, modal_akhir]
+    })
+    st.markdown(export_df(df_nr, "NeracaRinci"), unsafe_allow_html=True)
 
 # === LEMBAR PENGESAHAN ===
 st.subheader("📝 Lembar Pengesahan")
 st.markdown(f"""
-<table style='text-align:center; width:100%;'>
-<tr>
-  <td><strong>Disusun Oleh</strong></td>
-  <td><strong>Disetujui Oleh</strong></td>
-</tr>
-<tr>
-  <td><br><br><br><u>{bendahara}</u><br>Bendahara</td>
-  <td><br><br><br><u>{direktur}</u><br>Direktur/Pimpinan</td>
-</tr>
-<tr><td colspan='2'><br><br></td></tr>
-<tr>
-  <td><strong>Mengetahui</strong></td>
-  <td><strong>Mengetahui</strong></td>
-</tr>
-<tr>
-  <td><br><br><br><u>{kepala_desa}</u><br>Kepala Desa</td>
-  <td><br><br><br><u>{ketua_bpd}</u><br>Ketua BPD</td>
-</tr>
-</table>
+    <br><br>
+    <table style='width:100%; text-align:center;'>
+    <tr>
+        <td>Bendahara</td>
+        <td>Direktur {lembaga}</td>
+    </tr>
+    <tr><td><br><br><br></td><td><br><br><br></td></tr>
+    <tr>
+        <td><u>{bendahara}</u></td>
+        <td><u>{direktur}</u></td>
+    </tr>
+    <tr><td><br></td></tr>
+    <tr>
+        <td colspan="2">Mengetahui,</td>
+    </tr>
+    <tr>
+        <td>Kepala Desa</td>
+        <td>Ketua BPD</td>
+    </tr>
+    <tr><td><br><br><br></td><td><br><br><br></td></tr>
+    <tr>
+        <td><u>{kepala_desa}</u></td>
+        <td><u>{ketua_bpd}</u></td>
+    </tr>
+    </table>
 """, unsafe_allow_html=True)
-
-# === NEXT STEP ===
-st.success("✅ General Ledger siap. Silakan lanjut untuk Laba Rugi, Arus Kas, Neraca rinci, dan PDF.")
