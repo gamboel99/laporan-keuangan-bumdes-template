@@ -1,7 +1,6 @@
 import os
 import streamlit as st
 import pandas as pd
-import pdfkit
 from jinja2 import Template
 
 st.set_page_config(page_title="Laporan Keuangan BUMDes", layout="wide")
@@ -48,22 +47,16 @@ st.dataframe(st.session_state.data[menu], use_container_width=True)
 
 # Export PDF
 def export_pdf():
-    df = st.session_state.data[menu]
-    template_path = os.path.join(os.path.dirname(__file__), "pdf_template.html")
-    with open(template_path) as file_:
-        template = Template(file_.read())
-
-    html_out = template.render(
-        nama_bumdes=nama_bumdes,
-        desa=desa,
-        tahun=tahun,
-        judul=menu,
-        tabel=df.to_dict(orient="records")
-    )
-
-    output_path = os.path.join(os.path.dirname(__file__), "laporan.pdf")
-    pdfkit.from_string(html_out, output_path)
-    with open(output_path, "rb") as pdf_file:
-        st.download_button("📄 Unduh PDF", data=pdf_file, file_name="laporan_keuangan.pdf", mime="application/pdf")
-
-export_pdf()
+    import base64
+    html_out = """
+    <html>
+    <head><meta charset="utf-8"></head>
+    <body>
+        <h2>Laporan Keuangan BUMDes</h2>
+        <p>Fitur PDF belum aktif di versi online. Silakan gunakan tombol ekspor Excel atau download versi HTML ini dan cetak ke PDF secara manual.</p>
+    </body>
+    </html>
+    """
+    b64 = base64.b64encode(html_out.encode()).decode()
+    href = f'<a href="data:text/html;base64,{b64}" download="laporan_keuangan.html">📥 Unduh versi HTML</a>'
+    st.markdown(href, unsafe_allow_html=True)
