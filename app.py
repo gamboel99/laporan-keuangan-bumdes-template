@@ -9,9 +9,9 @@ st.set_page_config(page_title="Laporan Keuangan Desa", layout="wide")
 
 # === PILIHAN MULTI LEMBAGA DAN DESA ===
 st.sidebar.title("🔰 Pilih Unit Lembaga")
-lembaga = st.sidebar.selectbox("Lembaga", ["TPK", "LPMD", "Karang Taruna", "Posyandu", "TSBD", "Pokmas", "BUMDes"])
+lembaga = st.sidebar.selectbox("Lembaga", ["BUMDes", "TPK", "LPMD", "Karang Taruna", "Posyandu", "TSBD", "Pokmas"])
 desa = st.sidebar.text_input("Nama Desa", "Keling")
-nama_lembaga = st.sidebar.text_input("Nama Lembaga", "Buwana Raharja")
+nama_bumdes = st.sidebar.text_input("Nama Lembaga", "Buwana Raharja")
 tahun = st.sidebar.number_input("Tahun Laporan", 2025, step=1)
 
 # === PEJABAT UNTUK PENGESAHAN ===
@@ -24,7 +24,7 @@ ketua_bpd = st.sidebar.text_input("Nama Ketua BPD", "Dwi Purnomo")
 
 # === KOP LAPORAN ===
 st.markdown(f"""
-    <h3 style='text-align:center;'>Laporan Keuangan {lembaga} {nama_lembaga} Desa {desa}</h3>
+    <h3 style='text-align:center;'>Laporan Keuangan {lembaga} Desa {desa}</h3>
     <h4 style='text-align:center;'>Alamat: Jl. Raya Keling, Bukaan, Keling, Kec. Kepung, Kabupaten Kediri, Jawa Timur 64293</h4>
     <hr>
 """, unsafe_allow_html=True)
@@ -45,24 +45,15 @@ key_gl = f"gl_{lembaga}_{desa}_{tahun}"
 if key_gl not in st.session_state:
     st.session_state[key_gl] = pd.DataFrame(columns=["Tanggal", "Kode Akun", "Nama Akun", "Debit", "Kredit", "Keterangan", "Bukti"])
 
-# === DAFTAR AKUN STANDAR SISKEUDES (Contoh Minimal) ===
+# === DAFTAR AKUN CONTOH SISKEUDES ===
 daftar_akun = pd.DataFrame({
-    "Kode Akun": [
-        "5.1.02.01", "5.2.1.01", "5.2.2.01", "5.2.3.01",
-        "1.1.1.01", "1.2.1.01", "2.1.1.01", "3.1.1.01"
-    ],
-    "Nama Akun": [
-        "Belanja Barang dan Jasa", "Belanja Pegawai", "Belanja Modal", "Belanja Lainnya",
-        "Kas di Bendahara", "Piutang", "Utang", "Modal Penyertaan"
-    ],
-    "Posisi": [
-        "Laba Rugi", "Laba Rugi", "Laba Rugi", "Laba Rugi",
-        "Neraca", "Neraca", "Neraca", "Ekuitas"
-    ],
-    "Tipe": ["Debit", "Debit", "Debit", "Debit", "Debit", "Debit", "Kredit", "Kredit"]
+    "Kode Akun": ["5.1.1.01", "5.1.2.02", "5.1.2.03", "4.1.1.01", "1.1.1.01"],
+    "Nama Akun": ["Belanja Barang Operasional", "Belanja Jasa Kegiatan", "Belanja Modal Aset Tetap", "Pendapatan Asli Desa", "Kas"],
+    "Posisi": ["Beban", "Beban", "Beban", "Pendapatan", "Aset"],
+    "Tipe": ["Debit", "Debit", "Debit", "Kredit", "Debit"]
 })
 
-with st.expander("📚 Daftar Akun Standar (SISKEUDES)"):
+with st.expander("📚 Daftar Akun Standar (Siskeudes)"):
     st.dataframe(daftar_akun, use_container_width=True)
 
 # === FORM TAMBAH TRANSAKSI ===
@@ -125,7 +116,22 @@ if not df_gl.empty:
 else:
     st.info("Belum ada transaksi.")
 
-# === EKSPOR EXCEL ===
+# === RUMUS LABA RUGI / NERACA / ARUS KAS ===
+pendapatan = df_gl[df_gl["Posisi"] == "Pendapatan"]["Kredit"].sum()
+beban = df_gl[df_gl["Posisi"] == "Beban"]["Debit"].sum()
+laba_bersih = pendapatan - beban
+kas = df_gl[df_gl["Nama Akun"] == "Kas"]["Debit"].sum() - df_gl[df_gl["Nama Akun"] == "Kas"]["Kredit"].sum()
+
+# === TAMPILKAN LAPORAN ===
+st.subheader("📄 Laba Rugi")
+st.markdown(f"- Pendapatan: Rp {pendapatan:,.2f}")
+st.markdown(f"- Beban: Rp {beban:,.2f}")
+st.markdown(f"- **Laba Bersih**: Rp {laba_bersih:,.2f}")
+
+st.subheader("💰 Neraca")
+st.markdown(f"- Kas: Rp {kas:,.2f}")
+st.markdown(f"- Ekuitas: Rp {laba_bersih:,.2f}")
+
 st.subheader("📥 Unduh General Ledger")
 def download_excel(dataframe, filename):
     output = BytesIO()
@@ -135,6 +141,3 @@ def download_excel(dataframe, filename):
     return f"<a href='data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,{b64}' download='{filename}'>⬇️ Download Excel</a>"
 
 st.markdown(download_excel(df_gl, f"General_Ledger_{lembaga}_{desa}_{tahun}.xlsx"), unsafe_allow_html=True)
-
-# === CATATAN ===
-st.success("✅ General Ledger siap. Silakan lanjut untuk Laba Rugi, Neraca, Arus Kas, dan Ekspor PDF.")
