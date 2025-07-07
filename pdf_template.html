@@ -1,0 +1,27 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>{{ judul }}</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        h2 { text-align: center; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #333; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+    </style>
+</head>
+<body>
+    <h2>{{ judul }}</h2>
+    <p><strong>BUMDes:</strong> {{ nama_bumdes }}</p>
+    <p><strong>Desa:</strong> {{ desa }}</p>
+    <p><strong>Tahun:</strong> {{ tahun }}</p>
+    <table>
+        <tr><th>Uraian</th><th>Kategori</th><th>Jumlah</th></tr>
+        {% for row in tabel %}
+        <tr><td>{{ row.Uraian }}</td><td>{{ row.Kategori }}</td><td>{{ row.Jumlah }}</td></tr>
+        {% endfor %}
+    </table>
+</body>
+</html>
