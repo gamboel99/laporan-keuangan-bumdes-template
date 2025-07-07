@@ -38,51 +38,87 @@ with col_logo2:
     if os.path.exists("logo_bumdes.png"):
         st.image("logo_bumdes.png", width=80)
 
-st.title(f"📘 Buku Besar ({lembaga})")
-
 # === INISIALISASI ===
 key_gl = f"gl_{lembaga}_{desa}_{tahun}"
 if key_gl not in st.session_state:
     st.session_state[key_gl] = pd.DataFrame(columns=["Tanggal", "Kode Akun", "Nama Akun", "Debit", "Kredit", "Keterangan", "Bukti"])
 
-# === INPUT TRANSAKSI ===
-st.subheader("🧾 Input Transaksi Jurnal Harian")
-with st.form("input_transaksi"):
-    tgl = st.date_input("Tanggal")
-    akun_opsi = st.selectbox("Pilih Nama Akun", daftar_akun["Nama Akun"])
-    kode_akun = daftar_akun[daftar_akun["Nama Akun"] == akun_opsi]["Kode Akun"].values[0]
-    debit = st.number_input("Debit", 0.0)
-    kredit = st.number_input("Kredit", 0.0)
-    ket = st.text_input("Keterangan")
-    bukti = st.text_input("No. Bukti / Upload")
-    submit = st.form_submit_button("+ Tambah Transaksi")
+# === DAFTAR AKUN STANDAR ===
+from utils import daftar_akun
 
-if submit:
-    new_row = pd.DataFrame([[tgl, kode_akun, akun_opsi, debit, kredit, ket, bukti]], columns=st.session_state[key_gl].columns)
-    st.session_state[key_gl] = pd.concat([st.session_state[key_gl], new_row], ignore_index=True)
-    st.success("✅ Transaksi berhasil ditambahkan!")
-    st.experimental_rerun()
-
-# === TABEL TRANSAKSI ===
-st.subheader("📑 Daftar Transaksi")
-if not st.session_state[key_gl].empty:
-    edited_df = st.session_state[key_gl].copy()
-    for i in range(len(edited_df)):
-        col1, col2 = st.columns([9, 1])
-        with col1:
-            st.write(f"{i+1}. {edited_df.iloc[i].to_dict()}")
-        with col2:
-            if st.button("🗑️", key=f"hapus_{i}"):
-                st.session_state[key_gl] = edited_df.drop(index=i).reset_index(drop=True)
-                st.experimental_rerun()
-else:
-    st.info("Belum ada transaksi dimasukkan.")
-
-# === DAFTAR AKUN ===
 with st.expander("📚 Daftar Akun Standar SISKEUDES"):
     st.dataframe(daftar_akun, use_container_width=True)
 
-# LEMBAR PENGESAHAN
+# === FORM INPUT TRANSAKSI ===
+st.markdown("### 🧾 Input Transaksi Jurnal Harian")
+
+with st.form("form_input_transaksi", clear_on_submit=True):
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        tanggal = st.date_input("Tanggal Transaksi", datetime.today())
+    with col2:
+        akun_opsi = st.selectbox("Pilih Nama Akun", daftar_akun["Nama Akun"])
+        kode_akun_otomatis = daftar_akun[daftar_akun["Nama Akun"] == akun_opsi]["Kode Akun"].values[0]
+    with col3:
+        posisi_akun = daftar_akun[daftar_akun["Nama Akun"] == akun_opsi]["Tipe"].values[0]
+
+    col4, col5 = st.columns(2)
+    with col4:
+        debit = st.number_input("Jumlah Debit", min_value=0.0, step=1000.0)
+    with col5:
+        kredit = st.number_input("Jumlah Kredit", min_value=0.0, step=1000.0)
+
+    keterangan = st.text_input("Keterangan Transaksi")
+    bukti = st.text_input("Nomor / Bukti Transaksi")
+
+    submitted = st.form_submit_button("✅ Simpan Transaksi")
+    if submitted:
+        new_row = pd.DataFrame({
+            "Tanggal": [tanggal],
+            "Kode Akun": [kode_akun_otomatis],
+            "Nama Akun": [akun_opsi],
+            "Debit": [debit],
+            "Kredit": [kredit],
+            "Keterangan": [keterangan],
+            "Bukti": [bukti]
+        })
+        st.session_state[key_gl] = pd.concat([st.session_state[key_gl], new_row], ignore_index=True)
+        st.success("Transaksi berhasil disimpan ✅")
+
+# === TAMPILKAN JURNAL ===
+st.markdown("### 📋 Daftar Jurnal Harian")
+df_gl = st.session_state[key_gl]
+
+if not df_gl.empty:
+    for idx, row in df_gl.iterrows():
+        st.write(f"**{row['Tanggal']} | {row['Kode Akun']} - {row['Nama Akun']}**")
+        st.write(f"📌 {row['Keterangan']} | Bukti: {row['Bukti']}")
+        st.write(f"🟢 Debit: Rp {row['Debit']:,.0f} | 🔴 Kredit: Rp {row['Kredit']:,.0f}")
+        if st.button(f"Hapus Baris {idx+1}", key=f"hapus_{idx}"):
+            df_gl = df_gl.drop(index=idx).reset_index(drop=True)
+            st.session_state[key_gl] = df_gl
+            st.experimental_rerun()
+        st.markdown("---")
+else:
+    st.warning("Belum ada transaksi yang diinput.")
+
+# === LAPORAN LABA RUGI ===
+st.markdown("## 📊 Laporan Laba Rugi")
+laba_rugi = df_gl.merge(daftar_akun, on=["Kode Akun", "Nama Akun"], how="left")
+pendapatan = laba_rugi[laba_rugi["Posisi"] == "Pendapatan"]["Kredit"].sum()
+hpp = laba_rugi[laba_rugi["Posisi"] == "HPP"]["Debit"].sum()
+beban = laba_rugi[laba_rugi["Posisi"] == "Beban Usaha"]["Debit"].sum()
+nonusaha = laba_rugi[laba_rugi["Posisi"] == "Non-Usaha"]["Debit"].sum()
+
+laba_bersih = pendapatan - hpp - beban - nonusaha
+
+st.metric("Pendapatan", f"Rp {pendapatan:,.0f}")
+st.metric("HPP", f"Rp {hpp:,.0f}")
+st.metric("Beban Usaha", f"Rp {beban:,.0f}")
+st.metric("Beban Non-Usaha", f"Rp {nonusaha:,.0f}")
+st.metric("Laba Bersih", f"Rp {laba_bersih:,.0f}")
+
+# === LEMBAR PENGESAHAN ===
 st.markdown("""
     <br><br><br>
     <table width='100%' style='text-align:center;'>
@@ -97,4 +133,4 @@ st.markdown("""
     <br><br>
 """.format(bendahara, direktur, kepala_desa, ketua_bpd), unsafe_allow_html=True)
 
-st.success("✅ Fitur input transaksi, kode akun otomatis, dan hapus transaksi telah berhasil ditambahkan.")
+st.success("✅ Semua laporan otomatis berhasil ditampilkan.")
