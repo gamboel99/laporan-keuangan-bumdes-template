@@ -38,58 +38,81 @@ with col_logo2:
     if os.path.exists("logo_bumdes.png"):
         st.image("logo_bumdes.png", width=80)
 
-# === INISIALISASI DATAFRAME ===
+st.title(f"📘 Buku Besar ({lembaga})")
+
+# === INISIALISASI ===
 key_gl = f"gl_{lembaga}_{desa}_{tahun}"
 if key_gl not in st.session_state:
     st.session_state[key_gl] = pd.DataFrame(columns=["Tanggal", "Kode Akun", "Nama Akun", "Debit", "Kredit", "Keterangan", "Bukti"])
 
-# === JURNAL UMUM ===
-st.header("📑 Jurnal Umum")
-st.caption("Input transaksi harian secara manual")
-df_gl = st.session_state[key_gl]
-
-with st.form("form_jurnal"):
-    col1, col2, col3 = st.columns([2, 2, 2])
+# === FORM INPUT TRANSAKSI ===
+st.subheader("📝 Jurnal Harian")
+with st.form("form_input"):
+    col1, col2, col3 = st.columns(3)
     with col1:
-        tanggal = st.date_input("Tanggal")
-        kode = st.text_input("Kode Akun")
+        tanggal = st.date_input("Tanggal", value=datetime.today())
+        debit = st.number_input("Jumlah Debit", 0.0, step=1000.0)
     with col2:
-        nama = st.text_input("Nama Akun")
-        debit = st.number_input("Debit", value=0.0, step=1000.0)
+        kode_akun = st.selectbox("Kode Akun", options=[])  # Nanti diisi otomatis dari daftar_akun
+        kredit = st.number_input("Jumlah Kredit", 0.0, step=1000.0)
     with col3:
-        kredit = st.number_input("Kredit", value=0.0, step=1000.0)
+        nama_akun = st.text_input("Nama Akun")
         keterangan = st.text_input("Keterangan")
-        bukti = st.file_uploader("Bukti Transaksi", type=["jpg", "jpeg", "png", "pdf"], label_visibility="collapsed")
+        bukti = st.file_uploader("Upload Bukti", type=["jpg", "jpeg", "png", "pdf"])
 
-    submitted = st.form_submit_button("➕ Tambah Transaksi")
-    if submitted:
-        st.session_state[key_gl] = pd.concat([st.session_state[key_gl], pd.DataFrame.from_records([{
+    submit = st.form_submit_button("➕ Tambah Transaksi")
+    if submit:
+        df = st.session_state[key_gl]
+        new_row = {
             "Tanggal": tanggal,
-            "Kode Akun": kode,
-            "Nama Akun": nama,
+            "Kode Akun": kode_akun,
+            "Nama Akun": nama_akun,
             "Debit": debit,
             "Kredit": kredit,
             "Keterangan": keterangan,
             "Bukti": bukti.name if bukti else ""
-        }])], ignore_index=True)
-        st.success("✅ Transaksi berhasil ditambahkan")
-        st.experimental_rerun()
+        }
+        st.session_state[key_gl] = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
+        st.success("✅ Transaksi berhasil ditambahkan.")
 
-st.dataframe(df_gl, use_container_width=True)
+# === TAMPILKAN TABEL JURNAL ===
+st.write("### 📄 Data Transaksi")
+st.dataframe(st.session_state[key_gl], use_container_width=True)
 
-# === DOWNLOAD GENERAL LEDGER ===
-def download_excel(df, filename):
-    output = BytesIO()
-    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-        df.to_excel(writer, index=False, sheet_name='General Ledger')
-    processed_data = output.getvalue()
-    b64 = base64.b64encode(processed_data).decode()
-    href = f'<a href="data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,{b64}" download="{filename}">📥 Download General Ledger Excel</a>'
-    return href
+# === LAPORAN OTOMATIS ===
+df_gl = st.session_state[key_gl]
 
-st.markdown(download_excel(df_gl, f"General_Ledger_{lembaga}_{desa}_{tahun}.xlsx"), unsafe_allow_html=True)
+# Fungsi akumulasi berdasarkan posisi
+posisi_summary = df_gl.groupby("Nama Akun").agg({"Debit": "sum", "Kredit": "sum"}).reset_index()
 
-# === LEMBAR PENGESAHAN ===
+# Laporan Laba Rugi
+st.subheader("📊 Laporan Laba Rugi")
+laba_rugi = posisi_summary[posisi_summary["Nama Akun"].str.contains("Pendapatan|Beban|HPP|Non|Pajak")]
+st.dataframe(laba_rugi, use_container_width=True)
+
+# Laporan Neraca
+st.subheader("📊 Neraca (Laporan Posisi Keuangan)")
+neraca = posisi_summary[posisi_summary["Nama Akun"].str.contains("Kas|Bank|Piutang|Persediaan|Aset|Utang|Modal")]
+st.dataframe(neraca, use_container_width=True)
+
+# Arus Kas (simpel)
+st.subheader("📊 Laporan Arus Kas")
+arus_kas = pd.DataFrame({
+    "Arus Kas Masuk": [df_gl["Kredit"].sum()],
+    "Arus Kas Keluar": [df_gl["Debit"].sum()],
+    "Kenaikan Kas Bersih": [df_gl["Kredit"].sum() - df_gl["Debit"].sum()]
+})
+st.dataframe(arus_kas, use_container_width=True)
+
+# === EKSPOR EXCEL DAN PDF ===
+def convert_df(df):
+    return df.to_csv(index=False).encode('utf-8')
+
+st.download_button("⬇️ Download Laba Rugi (CSV)", convert_df(laba_rugi), f"Laba_Rugi_{lembaga}_{tahun}.csv", "text/csv")
+st.download_button("⬇️ Download Neraca (CSV)", convert_df(neraca), f"Neraca_{lembaga}_{tahun}.csv", "text/csv")
+st.download_button("⬇️ Download Arus Kas (CSV)", convert_df(arus_kas), f"Arus_Kas_{lembaga}_{tahun}.csv", "text/csv")
+
+# === PENGESAHAN ===
 st.markdown("""
     <br><br><br>
     <table width='100%' style='text-align:center;'>
@@ -104,4 +127,4 @@ st.markdown("""
     <br><br>
 """.format(bendahara, direktur, kepala_desa, ketua_bpd), unsafe_allow_html=True)
 
-st.success("✅ General Ledger dan Lembar Pengesahan berhasil dimuat. Lanjutkan ke laporan otomatis di bawah ini.")
+st.success("✅ Laporan otomatis Laba Rugi, Neraca, dan Arus Kas berhasil ditampilkan.")
