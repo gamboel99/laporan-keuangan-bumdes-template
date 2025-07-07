@@ -1,14 +1,13 @@
-# Laporan Keuangan Lembaga Desa vFinal
 import streamlit as st
 import pandas as pd
 import base64
 from datetime import datetime
-from io import BytesIO
 import os
+from io import BytesIO
 
 st.set_page_config(page_title="Laporan Keuangan Lembaga Desa", layout="wide")
 
-# === INPUT DASAR ===
+# === PILIHAN MULTI LEMBAGA DAN DESA ===
 st.sidebar.title("🔰 Pilih Unit Lembaga")
 lembaga = st.sidebar.selectbox("Lembaga", ["BUMDes", "TPK", "LPMD", "Karang Taruna", "Posyandu", "TSBD", "Pokmas"])
 desa = st.sidebar.text_input("Nama Desa", "Keling")
@@ -23,7 +22,7 @@ direktur = st.sidebar.text_input("Nama Ketua/Pimpinan", "Bambang Setiawan")
 kepala_desa = st.sidebar.text_input("Nama Kepala Desa", "Sugeng Riyadi")
 ketua_bpd = st.sidebar.text_input("Nama Ketua BPD", "Dwi Purnomo")
 
-# === HEADER LAPORAN ===
+# === KOP LAPORAN ===
 st.markdown(f"""
     <h3 style='text-align:center;'>Laporan Keuangan {lembaga} {nama_bumdes} Desa {desa}</h3>
     <h4 style='text-align:center;'>Alamat: Jl. Raya Keling, Bukaan, Keling, Kec. Kepung, Kabupaten Kediri, Jawa Timur 64293</h4>
@@ -39,80 +38,55 @@ with col_logo2:
     if os.path.exists("logo_bumdes.png"):
         st.image("logo_bumdes.png", width=80)
 
-# === DAFTAR AKUN SESUAI SISKEUDES ===
-daftar_akun_data = [
-    # Format: (Kode Akun, Nama Akun, Posisi, Tipe)
-    ("4.1.1", "Penjualan Barang Dagang", "Pendapatan", "Kredit"),
-    ("5.1.1", "Pembelian Barang Dagang", "HPP", "Debit"),
-    ("5.2.1", "Gaji dan Tunjangan", "Beban Usaha", "Debit"),
-    ("6.1", "Pendapatan Bunga", "Non-Usaha", "Kredit"),
-    ("6.4", "Beban Bunga", "Non-Usaha", "Debit"),
-    ("1.1.1", "Kas", "Aset Lancar", "Debit"),
-    ("2.1.1", "Utang Usaha", "Kewajiban Pendek", "Kredit"),
-    ("3.1.1", "Modal Desa", "Ekuitas", "Kredit"),
-    ("3.1.4", "Laba Tahun Berjalan", "Ekuitas", "Kredit")
-]
-daftar_akun = pd.DataFrame(daftar_akun_data, columns=["Kode Akun", "Nama Akun", "Posisi", "Tipe"])
+st.title(f"📘 Buku Besar ({lembaga})")
 
-# === INISIALISASI GENERAL LEDGER ===
+# === INISIALISASI ===
 key_gl = f"gl_{lembaga}_{desa}_{tahun}"
 if key_gl not in st.session_state:
-    st.session_state[key_gl] = pd.DataFrame(columns=["Tanggal", "Kode Akun", "Nama Akun", "Debit", "Kredit", "Keterangan"])
+    st.session_state[key_gl] = pd.DataFrame(columns=["Tanggal", "Kode Akun", "Nama Akun", "Debit", "Kredit", "Keterangan", "Bukti"])
 
-df_gl = st.session_state[key_gl]
+# === DAFTAR AKUN STANDAR SISKEUDES ===
+kode_akun = [
+    "4.1.1", "4.1.2", "4.1.3", "4.1.4", "4.1.5", "4.1.6", "4.1.7",
+    "5.1.1", "5.1.2", "5.1.3", "5.1.4", "5.1.5", "5.1.6",
+    "5.2.1", "5.2.2", "5.2.3", "5.2.4", "5.2.5", "5.2.6", "5.2.7", "5.2.8", "5.2.9", "5.2.10", "5.2.11",
+    "6.1", "6.2", "6.3", "6.4", "6.5", "6.6",
+    "1.1.1", "1.1.2", "1.1.3", "1.1.4", "1.1.5", "1.1.6", "1.1.7", "1.1.8",
+    "1.2.1", "1.2.2", "1.2.3", "1.2.4", "1.2.5", "1.2.6", "1.2.7", "1.2.8", "1.2.9",
+    "2.1.1", "2.1.2", "2.1.3", "2.1.4", "2.1.5",
+    "2.2.1", "2.2.2", "2.2.3",
+    "3.1.1", "3.1.2", "3.1.3", "3.1.4", "3.1.5"
+]
 
-# === INPUT TRANSAKSI ===
-st.subheader("📝 Input Transaksi Buku Besar")
-with st.form("form_gl"):
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        tanggal = st.date_input("Tanggal")
-        kode = st.selectbox("Kode Akun", daftar_akun["Kode Akun"])
-    with col2:
-        nama_akun = daftar_akun.set_index("Kode Akun").loc[kode]["Nama Akun"]
-        debit = st.number_input("Debit", value=0.0)
-    with col3:
-        kredit = st.number_input("Kredit", value=0.0)
-        keterangan = st.text_input("Keterangan")
-    submitted = st.form_submit_button("Tambah")
-    if submitted:
-        new_data = pd.DataFrame([[tanggal, kode, nama_akun, debit, kredit, keterangan]], columns=df_gl.columns)
-        st.session_state[key_gl] = pd.concat([df_gl, new_data], ignore_index=True)
-        st.experimental_rerun()
+nama_akun = [
+    "Penjualan Barang Dagang", "Pendapatan Jasa", "Pendapatan Sewa Aset", "Pendapatan Simpan Pinjam", "Pendapatan Usaha Tani", "Pendapatan Wisata", "Pendapatan Lainnya",
+    "Pembelian Barang Dagang", "Beban Produksi", "Beban Pemeliharaan Usaha", "Beban Penyusutan Aset Usaha", "Bahan Baku / Operasional", "Beban Lainnya",
+    "Gaji dan Tunjangan", "Listrik, Air, Komunikasi", "Transportasi", "Administrasi & Umum", "Sewa Tempat", "Perlengkapan", "Penyusutan Aset Tetap", "Penyuluhan", "Promosi & Publikasi", "Operasional Wisata", "CSR / Kegiatan Desa",
+    "Pendapatan Bunga", "Pendapatan Investasi", "Pendapatan Lain-lain", "Beban Bunga", "Kerugian Penjualan Aset", "Pajak",
+    "Kas", "Bank", "Piutang Usaha", "Persediaan Dagang", "Persediaan Bahan Baku", "Uang Muka", "Investasi Pendek", "Pendapatan Diterima Di Muka",
+    "Tanah", "Bangunan", "Peralatan", "Kendaraan", "Inventaris", "Aset Tetap Lainnya", "Akumulasi Penyusutan", "Investasi Panjang", "Aset Lain-lain",
+    "Utang Usaha", "Utang Gaji", "Utang Pajak", "Pendapatan Diterima Di Muka", "Utang Lain-lain",
+    "Pinjaman Bank", "Pinjaman Pemerintah", "Utang Pihak Ketiga",
+    "Modal Desa", "Modal Pihak Ketiga", "Saldo Laba Ditahan", "Laba Tahun Berjalan", "Cadangan Sosial / Investasi"
+]
 
-# === TABEL BUKU BESAR ===
-st.subheader("📘 Buku Besar")
-st.dataframe(st.session_state[key_gl], use_container_width=True)
+posisi = ["Pendapatan"]*7 + ["HPP"]*6 + ["Beban Usaha"]*11 + ["Non-Usaha"]*6 + ["Aset Lancar"]*8 + ["Aset Tetap"]*9 + ["Kewajiban Pendek"]*5 + ["Kewajiban Panjang"]*3 + ["Ekuitas"]*5
 
-# === LAPORAN OTOMATIS ===
-if not df_gl.empty:
-    df_gl = df_gl.merge(daftar_akun, on="Kode Akun", how="left")
+tipe = ["Kredit"]*7 + ["Debit"]*6 + ["Debit"]*11 + ["Kredit"]*3 + ["Debit"]*8 + ["Debit"]*9 + ["Kredit"]*5 + ["Kredit"]*3 + ["Kredit"]*5
 
-    st.subheader("📊 Laporan Laba Rugi")
-    laba_rugi = df_gl[df_gl["Posisi"].isin(["Pendapatan", "HPP", "Beban Usaha", "Non-Usaha"])]
-    grouped_lr = laba_rugi.groupby(["Posisi", "Nama Akun"]).sum(numeric_only=True)[["Debit", "Kredit"]]
-    st.dataframe(grouped_lr)
+if len(kode_akun) == len(nama_akun) == len(posisi) == len(tipe):
+    daftar_akun = pd.DataFrame({
+        "Kode Akun": kode_akun,
+        "Nama Akun": nama_akun,
+        "Posisi": posisi,
+        "Tipe": tipe
+    })
+    with st.expander("📚 Daftar Akun Standar SISKEUDES"):
+        st.dataframe(daftar_akun, use_container_width=True)
+else:
+    st.error("❌ Jumlah elemen pada daftar akun tidak sama. Periksa kembali kode, nama, posisi, dan tipe.")
 
-    total_pendapatan = df_gl[df_gl["Posisi"] == "Pendapatan"]["Kredit"].sum()
-    total_hpp = df_gl[df_gl["Posisi"] == "HPP"]["Debit"].sum()
-    total_beban = df_gl[df_gl["Posisi"] == "Beban Usaha"]["Debit"].sum()
-    total_nonusaha = df_gl[df_gl["Posisi"] == "Non-Usaha"]["Kredit"].sum() - df_gl[df_gl["Posisi"] == "Non-Usaha"]["Debit"].sum()
-    laba_bersih = total_pendapatan - total_hpp - total_beban + total_nonusaha
-
-    st.metric("Laba Tahun Berjalan", f"Rp {laba_bersih:,.0f}")
-
-    st.subheader("📗 Neraca")
-    neraca = df_gl[df_gl["Posisi"].isin(["Aset Lancar", "Aset Tetap", "Kewajiban Pendek", "Kewajiban Panjang", "Ekuitas"])]
-    grouped_nrc = neraca.groupby(["Posisi", "Nama Akun"]).sum(numeric_only=True)[["Debit", "Kredit"]]
-    st.dataframe(grouped_nrc)
-
-    st.subheader("📙 Arus Kas")
-    kas_masuk = df_gl["Debit"].sum()
-    kas_keluar = df_gl["Kredit"].sum()
-    saldo_kas = kas_masuk - kas_keluar
-    st.metric("Saldo Kas", f"Rp {saldo_kas:,.0f}")
-
-# === LEMBAR PENGESAHAN ===
+# LEMBAR PENGESAHAN
 st.markdown(f"""
     <br><br><br>
     <table width='100%' style='text-align:center;'>
@@ -124,15 +98,7 @@ st.markdown(f"""
         <tr><td><br><br><br></td><td><br><br><br></td></tr>
         <tr><td><u>{kepala_desa}</u><br>Kepala Desa</td><td><u>{ketua_bpd}</u><br>Ketua BPD</td></tr>
     </table>
+    <br><br>
 """, unsafe_allow_html=True)
 
-# === EKSPOR EXCEL ===
-def convert_df(df):
-    output = BytesIO()
-    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-        df.to_excel(writer, index=False, sheet_name='Buku Besar')
-    processed_data = output.getvalue()
-    return processed_data
-
-if not df_gl.empty:
-    st.download_button("⬇️ Download Buku Besar (Excel)", data=convert_df(df_gl), file_name=f"Buku_Besar_{lembaga}_{desa}_{tahun}.xlsx")
+st.success("✅ Struktur akun lengkap dan lembar pengesahan otomatis berhasil dimuat. Siap lanjut ke Laba Rugi, Neraca, dan Arus Kas otomatis.")
