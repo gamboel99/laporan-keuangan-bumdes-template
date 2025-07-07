@@ -45,74 +45,49 @@ key_gl = f"gl_{lembaga}_{desa}_{tahun}"
 if key_gl not in st.session_state:
     st.session_state[key_gl] = pd.DataFrame(columns=["Tanggal", "Kode Akun", "Nama Akun", "Debit", "Kredit", "Keterangan", "Bukti"])
 
-# === FORM INPUT TRANSAKSI ===
-st.subheader("📝 Jurnal Harian")
-with st.form("form_input"):
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        tanggal = st.date_input("Tanggal", value=datetime.today())
-        debit = st.number_input("Jumlah Debit", 0.0, step=1000.0)
-    with col2:
-        kode_akun = st.selectbox("Kode Akun", options=[])  # Nanti diisi otomatis dari daftar_akun
-        kredit = st.number_input("Jumlah Kredit", 0.0, step=1000.0)
-    with col3:
-        nama_akun = st.text_input("Nama Akun")
-        keterangan = st.text_input("Keterangan")
-        bukti = st.file_uploader("Upload Bukti", type=["jpg", "jpeg", "png", "pdf"])
+# === DAFTAR AKUN STANDAR SISKEUDES ===
+kode_akun = [
+    "4.1.1", "4.1.2", "4.1.3", "4.1.4", "4.1.5", "4.1.6", "4.1.7",
+    "5.1.1", "5.1.2", "5.1.3", "5.1.4", "5.1.5", "5.1.6",
+    "5.2.1", "5.2.2", "5.2.3", "5.2.4", "5.2.5", "5.2.6", "5.2.7", "5.2.8", "5.2.9", "5.2.10", "5.2.11",
+    "6.1", "6.2", "6.3", "6.4", "6.5", "6.6",
+    "1.1.1", "1.1.2", "1.1.3", "1.1.4", "1.1.5", "1.1.6", "1.1.7", "1.1.8",
+    "1.2.1", "1.2.2", "1.2.3", "1.2.4", "1.2.5", "1.2.6", "1.2.7", "1.2.8", "1.2.9",
+    "2.1.1", "2.1.2", "2.1.3", "2.1.4", "2.1.5",
+    "2.2.1", "2.2.2", "2.2.3",
+    "3.1.1", "3.1.2", "3.1.3", "3.1.4", "3.1.5"
+]
 
-    submit = st.form_submit_button("➕ Tambah Transaksi")
-    if submit:
-        df = st.session_state[key_gl]
-        new_row = {
-            "Tanggal": tanggal,
-            "Kode Akun": kode_akun,
-            "Nama Akun": nama_akun,
-            "Debit": debit,
-            "Kredit": kredit,
-            "Keterangan": keterangan,
-            "Bukti": bukti.name if bukti else ""
-        }
-        st.session_state[key_gl] = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
-        st.success("✅ Transaksi berhasil ditambahkan.")
+nama_akun = [
+    "Penjualan Barang Dagang", "Pendapatan Jasa", "Pendapatan Sewa Aset", "Pendapatan Simpan Pinjam", "Pendapatan Usaha Tani", "Pendapatan Wisata", "Pendapatan Lainnya",
+    "Pembelian Barang Dagang", "Beban Produksi", "Beban Pemeliharaan Usaha", "Beban Penyusutan Aset Usaha", "Bahan Baku / Operasional", "Beban Lainnya",
+    "Gaji dan Tunjangan", "Listrik, Air, Komunikasi", "Transportasi", "Administrasi & Umum", "Sewa Tempat", "Perlengkapan", "Penyusutan Aset Tetap", "Penyuluhan", "Promosi & Publikasi", "Operasional Wisata", "CSR / Kegiatan Desa",
+    "Pendapatan Bunga", "Pendapatan Investasi", "Pendapatan Lain-lain", "Beban Bunga", "Kerugian Penjualan Aset", "Pajak",
+    "Kas", "Bank", "Piutang Usaha", "Persediaan Dagang", "Persediaan Bahan Baku", "Uang Muka", "Investasi Pendek", "Pendapatan Diterima Di Muka",
+    "Tanah", "Bangunan", "Peralatan", "Kendaraan", "Inventaris", "Aset Tetap Lainnya", "Akumulasi Penyusutan", "Investasi Panjang", "Aset Lain-lain",
+    "Utang Usaha", "Utang Gaji", "Utang Pajak", "Pendapatan Diterima Di Muka", "Utang Lain-lain",
+    "Pinjaman Bank", "Pinjaman Pemerintah", "Utang Pihak Ketiga",
+    "Modal Desa", "Modal Pihak Ketiga", "Saldo Laba Ditahan", "Laba Tahun Berjalan", "Cadangan Sosial / Investasi"
+]
 
-# === TAMPILKAN TABEL JURNAL ===
-st.write("### 📄 Data Transaksi")
-st.dataframe(st.session_state[key_gl], use_container_width=True)
+posisi = [
+    "Pendapatan"]*7 + ["HPP"]*6 + ["Beban Usaha"]*11 + ["Non-Usaha"]*6 + ["Aset Lancar"]*8 + ["Aset Tetap"]*9 + ["Kewajiban Pendek"]*5 + ["Kewajiban Panjang"]*3 + ["Ekuitas"]*5
 
-# === LAPORAN OTOMATIS ===
-df_gl = st.session_state[key_gl]
+tipe = ["Kredit"]*7 + ["Debit"]*6 + ["Debit"]*11 + ["Kredit"]*3 + ["Debit"]*3 + ["Debit"]*5 + ["Debit"]*9 + ["Kredit"]*5 + ["Kredit"]*3 + ["Kredit"]*5
 
-# Fungsi akumulasi berdasarkan posisi
-posisi_summary = df_gl.groupby("Nama Akun").agg({"Debit": "sum", "Kredit": "sum"}).reset_index()
+assert len(kode_akun) == len(nama_akun) == len(posisi) == len(tipe), "Jumlah elemen pada daftar akun tidak sama."
 
-# Laporan Laba Rugi
-st.subheader("📊 Laporan Laba Rugi")
-laba_rugi = posisi_summary[posisi_summary["Nama Akun"].str.contains("Pendapatan|Beban|HPP|Non|Pajak")]
-st.dataframe(laba_rugi, use_container_width=True)
-
-# Laporan Neraca
-st.subheader("📊 Neraca (Laporan Posisi Keuangan)")
-neraca = posisi_summary[posisi_summary["Nama Akun"].str.contains("Kas|Bank|Piutang|Persediaan|Aset|Utang|Modal")]
-st.dataframe(neraca, use_container_width=True)
-
-# Arus Kas (simpel)
-st.subheader("📊 Laporan Arus Kas")
-arus_kas = pd.DataFrame({
-    "Arus Kas Masuk": [df_gl["Kredit"].sum()],
-    "Arus Kas Keluar": [df_gl["Debit"].sum()],
-    "Kenaikan Kas Bersih": [df_gl["Kredit"].sum() - df_gl["Debit"].sum()]
+daftar_akun = pd.DataFrame({
+    "Kode Akun": kode_akun,
+    "Nama Akun": nama_akun,
+    "Posisi": posisi,
+    "Tipe": tipe
 })
-st.dataframe(arus_kas, use_container_width=True)
 
-# === EKSPOR EXCEL DAN PDF ===
-def convert_df(df):
-    return df.to_csv(index=False).encode('utf-8')
+with st.expander("📚 Daftar Akun Standar SISKEUDES"):
+    st.dataframe(daftar_akun, use_container_width=True)
 
-st.download_button("⬇️ Download Laba Rugi (CSV)", convert_df(laba_rugi), f"Laba_Rugi_{lembaga}_{tahun}.csv", "text/csv")
-st.download_button("⬇️ Download Neraca (CSV)", convert_df(neraca), f"Neraca_{lembaga}_{tahun}.csv", "text/csv")
-st.download_button("⬇️ Download Arus Kas (CSV)", convert_df(arus_kas), f"Arus_Kas_{lembaga}_{tahun}.csv", "text/csv")
-
-# === PENGESAHAN ===
+# LEMBAR PENGESAHAN
 st.markdown("""
     <br><br><br>
     <table width='100%' style='text-align:center;'>
@@ -127,4 +102,4 @@ st.markdown("""
     <br><br>
 """.format(bendahara, direktur, kepala_desa, ketua_bpd), unsafe_allow_html=True)
 
-st.success("✅ Laporan otomatis Laba Rugi, Neraca, dan Arus Kas berhasil ditampilkan.")
+st.success("✅ Struktur akun lengkap dan lembar pengesahan otomatis berhasil dimuat. Siap lanjut ke Laba Rugi, Neraca, dan Arus Kas otomatis.")
