@@ -2,25 +2,31 @@ import streamlit as st
 import pandas as pd
 import base64
 from datetime import datetime
+import os
 
 st.set_page_config(page_title="Laporan Keuangan BUMDes", layout="wide")
 
-# === Logo dan Identitas ===
-st.sidebar.image("Logo_Pemdes_Keling.png", width=120, caption="Pemerintah Desa Keling")
-st.sidebar.image("Logo_Bumdes_Keling.png", width=120, caption="BUMDes Buwana Raharja")
-st.sidebar.title("Identitas Lembaga")
-desa = st.sidebar.text_input("Nama Desa", "Keling")
-lembaga = st.sidebar.selectbox("Lembaga", ["BUMDes", "PKK", "Karang Taruna", "LPMD", "Posyandu", "Lainnya"])
+# === IDENTITAS ===
+st.sidebar.title("Identitas BUMDes")
+nama_bumdes = st.sidebar.text_input("Nama BUMDes", "Buwana Raharja")
+desa = st.sidebar.text_input("Desa", "Keling")
 tahun = st.sidebar.number_input("Tahun Laporan", 2025, step=1)
 
-st.title(f"📘 Buku Besar ({lembaga} {desa})")
+# === PEJABAT UNTUK PENGESAHAN ===
+st.sidebar.markdown("---")
+st.sidebar.subheader("Pejabat Tanda Tangan")
+bendahara = st.sidebar.text_input("Nama Bendahara", "Siti Aminah")
+direktur = st.sidebar.text_input("Nama Direktur Utama", "Bambang Setiawan")
+kepala_desa = st.sidebar.text_input("Nama Kepala Desa", "Sugeng Riyadi")
+ketua_bpd = st.sidebar.text_input("Nama Ketua BPD", "Dwi Purnomo")
 
-# === Session Key per lembaga & tahun ===
-key_session = f"gl_{desa}_{lembaga}_{tahun}"
-if key_session not in st.session_state:
-    st.session_state[key_session] = pd.DataFrame(columns=["Tanggal", "Akun", "Debit", "Kredit", "Keterangan"])
+st.title("📘 Buku Besar (General Ledger)")
 
-# === Form Tambah Transaksi ===
+# === INISIALISASI ===
+if "gl" not in st.session_state:
+    st.session_state.gl = pd.DataFrame(columns=["Tanggal", "Akun", "Debit", "Kredit", "Keterangan", "Bukti"])
+
+# === FORM TAMBAH TRANSAKSI ===
 with st.expander("➕ Tambah Transaksi"):
     col1, col2, col3 = st.columns(3)
     with col1:
@@ -30,47 +36,59 @@ with st.expander("➕ Tambah Transaksi"):
     with col3:
         keterangan = st.text_input("Keterangan")
 
-    col4, col5 = st.columns(2)
+    col4, col5, col6 = st.columns(3)
     with col4:
         debit = st.number_input("Debit", min_value=0.0, format="%.2f")
     with col5:
         kredit = st.number_input("Kredit", min_value=0.0, format="%.2f")
+    with col6:
+        bukti_file = st.file_uploader("Upload Nota/Bukti", type=["png", "jpg", "jpeg", "pdf"])
 
     if st.button("💾 Simpan Transaksi"):
         if akun and (debit > 0 or kredit > 0):
+            if bukti_file:
+                bukti_path = f"bukti_{datetime.now().strftime('%Y%m%d%H%M%S')}_{bukti_file.name}"
+                with open(bukti_path, "wb") as f:
+                    f.write(bukti_file.read())
+            else:
+                bukti_path = ""
             new_row = pd.DataFrame([{
                 "Tanggal": tanggal.strftime("%Y-%m-%d"),
                 "Akun": akun,
                 "Debit": debit,
                 "Kredit": kredit,
-                "Keterangan": keterangan
+                "Keterangan": keterangan,
+                "Bukti": bukti_path
             }])
-            st.session_state[key_session] = pd.concat([st.session_state[key_session], new_row], ignore_index=True)
+            st.session_state.gl = pd.concat([st.session_state.gl, new_row], ignore_index=True)
             st.success("✅ Transaksi berhasil disimpan.")
         else:
             st.warning("⚠️ Lengkapi akun dan nilai debit/kredit.")
 
-# === Tampilkan GL dengan opsi hapus ===
+# === TAMPILKAN GL ===
 st.subheader("📋 Daftar Transaksi")
-gl_df = st.session_state[key_session].copy()
-
+gl_df = st.session_state.gl.copy()
 if not gl_df.empty:
-    gl_df["Hapus?"] = False
-    edited = st.data_editor(gl_df, num_rows="dynamic", use_container_width=True, key=f"gl_editor_{key_session}")
-    if st.button("🗑️ Hapus Transaksi yang Dicentang"):
-        hapus_idx = edited[edited["Hapus?"] == True].index
-        st.session_state[key_session].drop(index=hapus_idx, inplace=True)
-        st.session_state[key_session].reset_index(drop=True, inplace=True)
-        st.success("✅ Transaksi berhasil dihapus.")
+    for idx, row in gl_df.iterrows():
+        st.write(f"**{row['Tanggal']} - {row['Akun']}** | Debit: Rp{row['Debit']}, Kredit: Rp{row['Kredit']}")
+        st.caption(row['Keterangan'])
+        if row['Bukti'] and os.path.exists(row['Bukti']):
+            if row['Bukti'].endswith(".pdf"):
+                st.markdown(f"[📄 Lihat Bukti PDF]({row['Bukti']})")
+            else:
+                st.image(row['Bukti'], width=200)
+    if st.button("🗑️ Hapus Semua Transaksi"):
+        st.session_state.gl = pd.DataFrame(columns=gl_df.columns)
+        st.success("✅ Semua transaksi dihapus.")
 else:
     st.info("Belum ada transaksi yang dimasukkan.")
 
-# === Fungsi bantu ===
+# === FUNGSI BANTU ===
 def total_akun(df, kata):
     return df[df["Akun"].str.contains(kata, case=False, na=False)]["Debit"].sum() - df[df["Akun"].str.contains(kata, case=False, na=False)]["Kredit"].sum()
 
-# === Olah Data Keuangan ===
-df = st.session_state[key_session]
+# === HITUNG OTOMATIS ===
+df = st.session_state.gl
 pendapatan = total_akun(df, "Pendapatan")
 beban = total_akun(df, "Beban")
 laba_bersih = pendapatan - beban
@@ -90,9 +108,8 @@ utang = total_akun(df, "Utang")
 aset = kas_akhir + piutang + peralatan
 total_ke = utang + modal_akhir
 
-# === Tampilkan Semua Laporan ===
+# === TAMPILKAN RINGKASAN ===
 st.header("📑 Laporan Keuangan Otomatis")
-
 col1, col2 = st.columns(2)
 
 with col1:
@@ -120,13 +137,12 @@ with col2:
     st.markdown(f"- **Ekuitas:** Rp {modal_akhir:,.2f}")
     st.markdown(f"- **Total Kewajiban + Ekuitas:** Rp {total_ke:,.2f}")
 
-# === Ekspor HTML ===
+# === EKSPOR HTML ===
 st.subheader("📥 Unduh Ikhtisar")
-
 def export_html():
     html = f"""
-    <h2>Ikhtisar Laporan Keuangan</h2>
-    <p><strong>{lembaga} - Desa {desa} - Tahun {tahun}</strong></p>
+    <h2>Ikhtisar Laporan Keuangan BUMDes</h2>
+    <p><strong>{nama_bumdes} - Desa {desa} - Tahun {tahun}</strong></p>
     <h3>Laba Rugi</h3>
     <ul>
         <li>Pendapatan: Rp {pendapatan:,.2f}</li>
@@ -154,8 +170,40 @@ def export_html():
         <li>Ekuitas: Rp {modal_akhir:,.2f}</li>
         <li>Total Kewajiban + Ekuitas: Rp {total_ke:,.2f}</li>
     </ul>
+    <br><br>
+    <p style="text-align: right;">Keling, Juli {tahun}</p>
+    <table style="width:100%; text-align: center;">
+      <tr>
+        <td>Dibuat oleh</td>
+        <td>Disetujui oleh</td>
+      </tr>
+      <tr>
+        <td>Bendahara</td>
+        <td>Direktur Utama BUMDes</td>
+      </tr>
+      <tr><td colspan="2"><br><br><br><br></td></tr>
+      <tr>
+        <td><u>{bendahara}</u></td>
+        <td><u>{direktur}</u></td>
+      </tr>
+    </table>
+    <br><br>
+    <table style="width:100%; text-align: center;">
+      <tr>
+        <td>Mengetahui,</td>
+      </tr>
+      <tr>
+        <td>Kepala Desa</td>
+        <td>Ketua BPD</td>
+      </tr>
+      <tr><td colspan="2"><br><br><br><br></td></tr>
+      <tr>
+        <td><u>{kepala_desa}</u></td>
+        <td><u>{ketua_bpd}</u></td>
+      </tr>
+    </table>
     """
     b64 = base64.b64encode(html.encode()).decode()
-    return f'<a href="data:text/html;base64,{b64}" download="ikhtisar_laporan_{lembaga}_{desa}_{tahun}.html">📤 Unduh HTML</a>'
+    return f'<a href="data:text/html;base64,{b64}" download="ikhtisar_laporan.html">📤 Unduh HTML</a>'
 
 st.markdown(export_html(), unsafe_allow_html=True)
