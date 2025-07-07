@@ -3,6 +3,8 @@ import pandas as pd
 import base64
 from datetime import datetime
 import os
+from io import BytesIO
+from xhtml2pdf import pisa
 
 st.set_page_config(page_title="Laporan Keuangan BUMDes", layout="wide")
 
@@ -27,12 +29,12 @@ with col_logo1:
     if os.path.exists("logo_pemdes.png"):
         st.image("logo_pemdes.png", width=100)
     else:
-        st.text("Logo Pemdes tidak ditemukan")
+        st.warning("Logo Pemdes tidak ditemukan. Simpan sebagai logo_pemdes.png")
 with col_logo2:
     if os.path.exists("logo_bumdes.png"):
         st.image("logo_bumdes.png", width=100)
     else:
-        st.text("Logo BUMDes tidak ditemukan")
+        st.warning("Logo BUMDes tidak ditemukan. Simpan sebagai logo_bumdes.png")
 
 st.title(f"📘 Buku Besar ({lembaga})")
 
@@ -152,9 +154,17 @@ with col2:
     st.markdown(f"- **Ekuitas:** Rp {modal_akhir:,.2f}")
     st.markdown(f"- **Total Kewajiban + Ekuitas:** Rp {total_ke:,.2f}")
 
-# === EKSPOR HTML ===
-st.subheader("📥 Unduh Ikhtisar")
-def export_html():
+# === EKSPOR PDF ===
+st.subheader("📥 Unduh Laporan (PDF)")
+
+def render_pdf(html):
+    result = BytesIO()
+    pisa_status = pisa.CreatePDF(html, dest=result)
+    if pisa_status.err:
+        return None
+    return result
+
+def generate_html():
     html = f"""
     <h2 style='text-align:center;'>Ikhtisar Laporan Keuangan - {lembaga}</h2>
     <p style='text-align:center;'><strong>{nama_bumdes} - Desa {desa} - Tahun {tahun}</strong></p>
@@ -202,7 +212,11 @@ def export_html():
       <tr><td><u>{kepala_desa}</u></td><td><u>{ketua_bpd}</u></td></tr>
     </table>
     """
-    b64 = base64.b64encode(html.encode()).decode()
-    return f'<a href="data:text/html;base64,{b64}" download="ikhtisar_{lembaga}_{desa}_{tahun}.html">📤 Unduh HTML</a>'
+    return html
 
-st.markdown(export_html(), unsafe_allow_html=True)
+html = generate_html()
+pdf = render_pdf(html)
+if pdf:
+    st.download_button("📄 Unduh PDF", data=pdf.getvalue(), file_name=f"Laporan_{lembaga}_{desa}_{tahun}.pdf")
+else:
+    st.error("❌ Gagal membuat PDF. Coba lagi.")
