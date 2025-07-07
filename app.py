@@ -18,8 +18,8 @@ menu = st.selectbox("Pilih Laporan", [
     "Laporan Laba Rugi",
     "Laporan Arus Kas",
     "Laporan Perubahan Ekuitas"
-])
-
+    ])
+#fix laporan drop down
 if "data" not in st.session_state:
     st.session_state.data = {}
 
