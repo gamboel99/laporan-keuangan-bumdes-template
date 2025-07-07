@@ -15,48 +15,12 @@ nama_bumdes = st.sidebar.text_input("Nama Lembaga", "Buwana Raharja")
 tahun = st.sidebar.number_input("Tahun Laporan", 2025, step=1)
 
 # === PEJABAT UNTUK PENGESAHAN ===
-# === LEMBAR PENGESAHAN ===
-st.subheader("🖊️ Lembar Pengesahan")
-
-ttd_html = f"""
-<br><br><br>
-<table style='width:100%; text-align:center; font-size:16px;'>
-  <tr>
-    <td><b>Dibuat oleh</b></td>
-    <td><b>Disetujui oleh</b></td>
-  </tr>
-  <tr>
-    <td><b>Bendahara</b></td>
-    <td><b>Direktur {lembaga}</b></td>
-  </tr>
-  <tr><td><br><br><br></td><td></td></tr>
-  <tr>
-    <td><u>{bendahara}</u></td>
-    <td><u>{direktur}</u></td>
-  </tr>
-</table>
-<br><br>
-<table style='width:100%; text-align:center; font-size:16px;'>
-  <tr>
-    <td><b>Mengetahui</b></td>
-    <td></td>
-    <td><b>Mengetahui</b></td>
-  </tr>
-  <tr>
-    <td><b>Kepala Desa {desa}</b></td>
-    <td></td>
-    <td><b>Ketua BPD</b></td>
-  </tr>
-  <tr><td><br><br><br></td><td></td><td></td></tr>
-  <tr>
-    <td><u>{kepala_desa}</u></td>
-    <td></td>
-    <td><u>{ketua_bpd}</u></td>
-  </tr>
-</table>
-"""
-
-st.markdown(ttd_html, unsafe_allow_html=True)
+st.sidebar.markdown("---")
+st.sidebar.subheader("Pejabat Tanda Tangan")
+bendahara = st.sidebar.text_input("Nama Bendahara", "Siti Aminah")
+direktur = st.sidebar.text_input("Nama Ketua/Pimpinan", "Bambang Setiawan")
+kepala_desa = st.sidebar.text_input("Nama Kepala Desa", "Sugeng Riyadi")
+ketua_bpd = st.sidebar.text_input("Nama Ketua BPD", "Dwi Purnomo")
 
 # === KOP LAPORAN ===
 st.markdown("""
@@ -152,87 +116,59 @@ if not df_gl.empty:
 else:
     st.info("Belum ada transaksi.")
 
-# === LAPORAN OTOMATIS ===
-st.header("📑 Laporan Keuangan Otomatis")
-
-# Fungsi total
-def total_akun(kode):
-    df = st.session_state[key_gl]
-    debit = df[df['Kode Akun'] == kode]['Debit'].sum()
-    kredit = df[df['Kode Akun'] == kode]['Kredit'].sum()
-    return kredit - debit if daftar_akun.loc[daftar_akun['Kode Akun'] == kode, 'Tipe'].values[0] == 'Kredit' else debit - kredit
-
-# Laba Rugi
-pendapatan = total_akun("4.1")
-beban = total_akun("5.1")
-laba = pendapatan - beban
-
-# Ekuitas
-modal_awal = total_akun("3.1")
-prive = total_akun("3.2")
-modal_akhir = modal_awal + laba - prive
-
-# Neraca
-kas = total_akun("1.1")
-piutang = total_akun("1.2")
-utang = total_akun("2.1")
-aset = kas + piutang
-kewajiban_ekuitas = utang + modal_akhir
-
-col1, col2 = st.columns(2)
-with col1:
-    st.subheader("📄 Laba Rugi")
-    st.write(f"**Pendapatan Usaha:** Rp {pendapatan:,.2f}")
-    st.write(f"**Beban Operasional:** Rp {beban:,.2f}")
-    st.write(f"**Laba Bersih:** Rp {laba:,.2f}")
-
-    st.subheader("📈 Ekuitas")
-    st.write(f"**Modal Awal:** Rp {modal_awal:,.2f}")
-    st.write(f"**Prive:** Rp {prive:,.2f}")
-    st.write(f"**Laba Ditahan:** Rp {laba:,.2f}")
-    st.write(f"**Modal Akhir:** Rp {modal_akhir:,.2f}")
-
-with col2:
-    st.subheader("💰 Neraca")
-    st.write(f"**Kas:** Rp {kas:,.2f}")
-    st.write(f"**Piutang:** Rp {piutang:,.2f}")
-    st.write(f"**Total Aset:** Rp {aset:,.2f}")
-    st.write(f"**Utang:** Rp {utang:,.2f}")
-    st.write(f"**Ekuitas:** Rp {modal_akhir:,.2f}")
-    st.write(f"**Total Kewajiban + Ekuitas:** Rp {kewajiban_ekuitas:,.2f}")
-
-# === EKSPOR EXCEL PER LAPORAN ===
-def ekspor_excel(data, judul):
+# === EKSPOR EXCEL ===
+st.subheader("📥 Unduh General Ledger")
+def download_excel(dataframe, filename):
     output = BytesIO()
     with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-        df = pd.DataFrame(data.items(), columns=["Uraian", "Jumlah"])
-        df.to_excel(writer, index=False, sheet_name=judul)
+        dataframe.to_excel(writer, index=False, sheet_name='GeneralLedger')
     b64 = base64.b64encode(output.getvalue()).decode()
-    return f"<a href='data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,{b64}' download='{judul}_{tahun}.xlsx'>⬇️ Download {judul}</a>"
+    return f"<a href='data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,{b64}' download='{filename}'>⬇️ Download Excel</a>"
 
-st.markdown("### 📥 Ekspor Excel per Laporan")
-st.markdown(ekspor_excel({"Pendapatan Usaha": pendapatan, "Beban Operasional": beban, "Laba Bersih": laba}, "LabaRugi"), unsafe_allow_html=True)
-st.markdown(ekspor_excel({"Modal Awal": modal_awal, "Prive": prive, "Laba Ditahan": laba, "Modal Akhir": modal_akhir}, "Ekuitas"), unsafe_allow_html=True)
-st.markdown(ekspor_excel({"Kas": kas, "Piutang": piutang, "Total Aset": aset, "Utang": utang, "Ekuitas": modal_akhir, "Total Kewajiban + Ekuitas": kewajiban_ekuitas}, "Neraca"), unsafe_allow_html=True)
+st.markdown(download_excel(df_gl, f"General_Ledger_{lembaga}_{desa}_{tahun}.xlsx"), unsafe_allow_html=True)
 
-# === PENGESAHAN ===
-st.markdown("""
-    <br><br>
-    <h4 style='text-align:center;'>LEMBAR PENGESAHAN</h4>
-    <table style='width:100%; text-align:center;'>
-    <tr>
-        <td>Bendahara<br><br><br><br>({bendahara})</td>
-        <td>Direktur/Pimpinan<br><br><br><br>({direktur})</td>
-    </tr>
-    <tr>
-        <td colspan='2'><br></td>
-    </tr>
-    <tr>
-        <td>Mengetahui,<br>Kepala Desa<br><br><br>({kepala_desa})</td>
-        <td>Ketua BPD<br><br><br><br>({ketua_bpd})</td>
-    </tr>
-    </table>
-""", unsafe_allow_html=True)
+# === LEMBAR PENGESAHAN ===
+st.subheader("🖊️ Lembar Pengesahan")
 
-# === SELESAI ===
-st.success("✅ Laporan Keuangan lengkap. Siap diekspor dan dicetak.")
+ttd_html = f"""
+<br><br><br>
+<table style='width:100%; text-align:center; font-size:16px;'>
+  <tr>
+    <td><b>Dibuat oleh</b></td>
+    <td><b>Disetujui oleh</b></td>
+  </tr>
+  <tr>
+    <td><b>Bendahara</b></td>
+    <td><b>Direktur {lembaga}</b></td>
+  </tr>
+  <tr><td><br><br><br></td><td><br><br><br></td></tr>
+  <tr>
+    <td><u>{bendahara}</u></td>
+    <td><u>{direktur}</u></td>
+  </tr>
+</table>
+<br><br>
+<table style='width:100%; text-align:center; font-size:16px;'>
+  <tr>
+    <td><b>Mengetahui</b></td>
+    <td></td>
+    <td><b>Mengetahui</b></td>
+  </tr>
+  <tr>
+    <td><b>Kepala Desa {desa}</b></td>
+    <td></td>
+    <td><b>Ketua BPD</b></td>
+  </tr>
+  <tr><td><br><br><br></td><td></td><td><br><br><br></td></tr>
+  <tr>
+    <td><u>{kepala_desa}</u></td>
+    <td></td>
+    <td><u>{ketua_bpd}</u></td>
+  </tr>
+</table>
+"""
+
+st.markdown(ttd_html, unsafe_allow_html=True)
+
+# === NEXT STEP ===
+st.success("✅ General Ledger siap. Silakan lanjut untuk Laba Rugi, Arus Kas, Neraca rinci, dan PDF.")
