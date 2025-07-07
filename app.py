@@ -1,9 +1,7 @@
 import streamlit as st
 import pandas as pd
-import base64
-from datetime import datetime
 import os
-from io import BytesIO
+from datetime import datetime
 
 st.set_page_config(page_title="Laporan Keuangan Lembaga Desa", layout="wide")
 
@@ -38,87 +36,83 @@ with col_logo2:
     if os.path.exists("logo_bumdes.png"):
         st.image("logo_bumdes.png", width=80)
 
-st.title(f"📘 Buku Besar ({lembaga})")
-
 # === INISIALISASI ===
 key_gl = f"gl_{lembaga}_{desa}_{tahun}"
 if key_gl not in st.session_state:
-    st.session_state[key_gl] = pd.DataFrame(columns=["Tanggal", "Kode Akun", "Nama Akun", "Debit", "Kredit", "Keterangan", "Bukti"])
+    st.session_state[key_gl] = pd.DataFrame(columns=["Tanggal", "Kode Akun", "Nama Akun", "Debit", "Kredit", "Keterangan"])
 
-# === DAFTAR AKUN STANDAR SISKEUDES ===
-kode_akun = [
-    "4.1.1", "4.1.2", "4.1.3", "4.1.4", "4.1.5", "4.1.6", "4.1.7",
-    "5.1.1", "5.1.2", "5.1.3", "5.1.4", "5.1.5", "5.1.6",
-    "5.2.1", "5.2.2", "5.2.3", "5.2.4", "5.2.5", "5.2.6", "5.2.7", "5.2.8", "5.2.9", "5.2.10", "5.2.11",
-    "6.1", "6.2", "6.3", "6.4", "6.5", "6.6",
-    "1.1.1", "1.1.2", "1.1.3", "1.1.4", "1.1.5", "1.1.6", "1.1.7", "1.1.8",
-    "1.2.1", "1.2.2", "1.2.3", "1.2.4", "1.2.5", "1.2.6", "1.2.7", "1.2.8", "1.2.9",
-    "2.1.1", "2.1.2", "2.1.3", "2.1.4", "2.1.5",
-    "2.2.1", "2.2.2", "2.2.3",
-    "3.1.1", "3.1.2", "3.1.3", "3.1.4", "3.1.5"
-]
+# === FORM INPUT TRANSAKSI ===
+st.subheader("📥 Input Jurnal Harian")
+with st.form("form_jurnal"):
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        tgl = st.date_input("Tanggal", datetime.now())
+    with col2:
+        kode = st.selectbox("Kode Akun", options=[])
+    with col3:
+        nama = st.text_input("Nama Akun")
+    debit = st.number_input("Debit", 0.0)
+    kredit = st.number_input("Kredit", 0.0)
+    ket = st.text_input("Keterangan")
+    submitted = st.form_submit_button("Simpan")
 
-nama_akun = [
-    "Penjualan Barang Dagang", "Pendapatan Jasa", "Pendapatan Sewa Aset", "Pendapatan Simpan Pinjam", "Pendapatan Usaha Tani", "Pendapatan Wisata", "Pendapatan Lainnya",
-    "Pembelian Barang Dagang", "Beban Produksi", "Beban Pemeliharaan Usaha", "Beban Penyusutan Aset Usaha", "Bahan Baku / Operasional", "Beban Lainnya",
-    "Gaji dan Tunjangan", "Listrik, Air, Komunikasi", "Transportasi", "Administrasi & Umum", "Sewa Tempat", "Perlengkapan", "Penyusutan Aset Tetap", "Penyuluhan", "Promosi & Publikasi", "Operasional Wisata", "CSR / Kegiatan Desa",
-    "Pendapatan Bunga", "Pendapatan Investasi", "Pendapatan Lain-lain", "Beban Bunga", "Kerugian Penjualan Aset", "Pajak",
-    "Kas", "Bank", "Piutang Usaha", "Persediaan Dagang", "Persediaan Bahan Baku", "Uang Muka", "Investasi Pendek", "Pendapatan Diterima Di Muka",
-    "Tanah", "Bangunan", "Peralatan", "Kendaraan", "Inventaris", "Aset Tetap Lainnya", "Akumulasi Penyusutan", "Investasi Panjang", "Aset Lain-lain",
-    "Utang Usaha", "Utang Gaji", "Utang Pajak", "Pendapatan Diterima Di Muka", "Utang Lain-lain",
-    "Pinjaman Bank", "Pinjaman Pemerintah", "Utang Pihak Ketiga",
-    "Modal Desa", "Modal Pihak Ketiga", "Saldo Laba Ditahan", "Laba Tahun Berjalan", "Cadangan Sosial / Investasi"
-]
+    if submitted:
+        new_data = {"Tanggal": tgl, "Kode Akun": kode, "Nama Akun": nama, "Debit": debit, "Kredit": kredit, "Keterangan": ket}
+        st.session_state[key_gl] = pd.concat([st.session_state[key_gl], pd.DataFrame([new_data])], ignore_index=True)
+        st.success("✅ Transaksi berhasil disimpan.")
 
-posisi = (
-    ["Pendapatan"] * 7 +
-    ["HPP"] * 6 +
-    ["Beban Usaha"] * 11 +
-    ["Non-Usaha"] * 6 +
-    ["Aset Lancar"] * 8 +
-    ["Aset Tetap"] * 9 +
-    ["Kewajiban Pendek"] * 5 +
-    ["Kewajiban Panjang"] * 3 +
-    ["Ekuitas"] * 5
-)
+# === TAMPILKAN JURNAL ===
+df_gl = st.session_state[key_gl]
+if not df_gl.empty:
+    st.subheader("📜 Jurnal Harian")
+    st.dataframe(df_gl, use_container_width=True)
 
-tipe = (
-    ["Kredit"] * 7 +              # Pendapatan
-    ["Debit"] * 6 +               # HPP
-    ["Debit"] * 11 +              # Beban Usaha
-    ["Kredit", "Kredit", "Kredit", "Debit", "Debit", "Debit"] +  # Non-Usaha
-    ["Debit"] * 8 +               # Aset Lancar
-    ["Debit"] * 9 +               # Aset Tetap
-    ["Kredit"] * 5 +              # Kewajiban Pendek
-    ["Kredit"] * 3 +              # Kewajiban Panjang
-    ["Kredit"] * 5               # Ekuitas
-)
+    # === LAPORAN LABA RUGI ===
+    st.subheader("📈 Laporan Laba Rugi")
+    total_pendapatan = df_gl[df_gl['Kode Akun'].str.startswith("4")]['Kredit'].sum()
+    total_beban = df_gl[df_gl['Kode Akun'].str.startswith("5")]['Debit'].sum()
+    total_nonusaha = df_gl[df_gl['Kode Akun'].str.startswith("6")]['Debit'].sum()
+    laba_bersih = total_pendapatan - (total_beban + total_nonusaha)
 
-assert len(kode_akun) == len(nama_akun) == len(posisi) == len(tipe), "Jumlah elemen tidak sama"
+    st.write(f"**Total Pendapatan:** Rp {total_pendapatan:,.0f}")
+    st.write(f"**Total Beban Usaha:** Rp {total_beban:,.0f}")
+    st.write(f"**Total Beban Non-Usaha:** Rp {total_nonusaha:,.0f}")
+    st.write(f"**Laba/Rugi Bersih:** Rp {laba_bersih:,.0f}")
 
-daftar_akun = pd.DataFrame({
-    "Kode Akun": kode_akun,
-    "Nama Akun": nama_akun,
-    "Posisi": posisi,
-    "Tipe": tipe
-})
+    # === NERACA ===
+    st.subheader("📊 Neraca")
+    aset = df_gl[df_gl['Kode Akun'].str.startswith("1")]['Debit'].sum()
+    kewajiban = df_gl[df_gl['Kode Akun'].str.startswith("2")]['Kredit'].sum()
+    ekuitas = df_gl[df_gl['Kode Akun'].str.startswith("3")]['Kredit'].sum()
+    total_kewajiban_ekuitas = kewajiban + ekuitas
 
-with st.expander("📚 Daftar Akun Standar SISKEUDES"):
-    st.dataframe(daftar_akun, use_container_width=True)
+    st.write(f"**Total Aset:** Rp {aset:,.0f}")
+    st.write(f"**Total Kewajiban:** Rp {kewajiban:,.0f}")
+    st.write(f"**Total Ekuitas:** Rp {ekuitas:,.0f}")
+    st.write(f"**Total Kewajiban + Ekuitas:** Rp {total_kewajiban_ekuitas:,.0f}")
 
-# LEMBAR PENGESAHAN
-st.markdown("""
+    # === ARUS KAS ===
+    st.subheader("💸 Laporan Arus Kas")
+    kas_masuk = df_gl[df_gl['Kode Akun'].isin(["1.1.1", "1.1.2"])]  # Kas dan Bank
+    arus_kas_masuk = kas_masuk['Debit'].sum()
+    arus_kas_keluar = kas_masuk['Kredit'].sum()
+    saldo_kas = arus_kas_masuk - arus_kas_keluar
+
+    st.write(f"**Arus Kas Masuk:** Rp {arus_kas_masuk:,.0f}")
+    st.write(f"**Arus Kas Keluar:** Rp {arus_kas_keluar:,.0f}")
+    st.write(f"**Saldo Kas Akhir:** Rp {saldo_kas:,.0f}")
+
+# === LEMBAR PENGESAHAN ===
+st.markdown(f"""
     <br><br><br>
     <table width='100%' style='text-align:center;'>
         <tr><td><b>Disusun oleh</b></td><td><b>Disetujui oleh</b></td></tr>
         <tr><td><br><br><br></td><td><br><br><br></td></tr>
-        <tr><td><u>{}</u><br>Bendahara</td><td><u>{}</u><br>Direktur/Pimpinan</td></tr>
+        <tr><td><u>{bendahara}</u><br>Bendahara</td><td><u>{direktur}</u><br>Direktur/Pimpinan</td></tr>
         <tr><td colspan='2'><br><br></td></tr>
         <tr><td><b>Mengetahui</b></td><td><b>Mengetahui</b></td></tr>
         <tr><td><br><br><br></td><td><br><br><br></td></tr>
-        <tr><td><u>{}</u><br>Kepala Desa</td><td><u>{}</u><br>Ketua BPD</td></tr>
+        <tr><td><u>{kepala_desa}</u><br>Kepala Desa</td><td><u>{ketua_bpd}</u><br>Ketua BPD</td></tr>
     </table>
     <br><br>
-""".format(bendahara, direktur, kepala_desa, ketua_bpd), unsafe_allow_html=True)
-
-st.success("✅ Struktur akun lengkap dan lembar pengesahan otomatis berhasil dimuat. Siap lanjut ke Laba Rugi, Neraca, dan Arus Kas otomatis.")
+""", unsafe_allow_html=True)
