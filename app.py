@@ -21,12 +21,27 @@ laporan_list = [
     "Laporan Perubahan Ekuitas"
 ]
 
+# Daftar akun default untuk neraca
+akun_default_neraca = [
+    ("Kas", "Aset"),
+    ("Piutang", "Aset"),
+    ("Persediaan", "Aset"),
+    ("Peralatan", "Aset"),
+    ("Utang Usaha", "Kewajiban"),
+    ("Modal Awal", "Ekuitas"),
+]
+
 # Inisialisasi semua laporan di session_state
 if "data" not in st.session_state:
-    st.session_state.data = {
-        nama: pd.DataFrame(columns=["Uraian", "Kategori", "Jumlah"])
-        for nama in laporan_list
-    }
+    st.session_state.data = {}
+    for nama in laporan_list:
+        st.session_state.data[nama] = pd.DataFrame(columns=["Uraian", "Kategori", "Jumlah"])
+    # Tambahkan akun default untuk neraca
+    for akun, kategori in akun_default_neraca:
+        st.session_state.data["Laporan Posisi Keuangan"] = pd.concat([
+            st.session_state.data["Laporan Posisi Keuangan"],
+            pd.DataFrame([{"Uraian": akun, "Kategori": kategori, "Jumlah": 0}])
+        ], ignore_index=True)
 
 # Fungsi Export HTML per laporan
 def export_html(nama_laporan, df):
@@ -53,7 +68,13 @@ def export_html(nama_laporan, df):
 for nama_laporan in laporan_list:
     st.header(nama_laporan)
 
-    with st.expander(f"➕ Tambah Data: {nama_laporan}"):
+    # Tampilkan tabel
+    df = st.session_state.data[nama_laporan]
+    edited_df = st.data_editor(df, num_rows="dynamic", use_container_width=True, key=f"edit_{nama_laporan}")
+    st.session_state.data[nama_laporan] = edited_df
+
+    # Form tambahan akun
+    with st.expander(f"➕ Tambah Akun atau Baris Baru: {nama_laporan}"):
         col1, col2, col3 = st.columns(3)
         with col1:
             uraian = st.text_input("Uraian", key=f"uraian_{nama_laporan}")
@@ -69,8 +90,6 @@ for nama_laporan in laporan_list:
                 ], ignore_index=True)
             else:
                 st.warning("Mohon lengkapi uraian dan kategori.")
-
-    st.dataframe(st.session_state.data[nama_laporan], use_container_width=True)
 
     export_html(nama_laporan, st.session_state.data[nama_laporan])
     st.markdown("---")
