@@ -45,44 +45,7 @@ key_gl = f"gl_{lembaga}_{desa}_{tahun}"
 if key_gl not in st.session_state:
     st.session_state[key_gl] = pd.DataFrame(columns=["Tanggal", "Kode Akun", "Nama Akun", "Debit", "Kredit", "Keterangan", "Bukti"])
 
-# === DAFTAR AKUN STANDAR SISKEUDES TANPA ERROR ===
-AssertionError: This app has encountered an error. The original error message is redacted to prevent data leaks. Full error details have been recorded in the logs (if you're on Streamlit Cloud, click on 'Manage app' in the lower right of your app).
-Traceback:
-File "/mount/src/laporan-keuangan-bumdes-template/app.py", line 83, in <module>
-    assert len(kode_akun) == len(nama_akun) == len(posisi) == len(tipe), "Jumlah elemen pada daftar akun tidak sama."
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-# Buat dataframe akun
-
-daftar_akun = pd.DataFrame({
-    "Kode Akun": kode_akun,
-    "Nama Akun": nama_akun,
-    "Posisi": posisi,
-    "Tipe": tipe
-})
-
-with st.expander("📚 Daftar Akun Standar SISKEUDES"):
-    st.dataframe(daftar_akun, use_container_width=True)
-
-# LEMBAR PENGESAHAN
-st.markdown("""
-    <br><br><br>
-    <table width='100%' style='text-align:center;'>
-        <tr><td><b>Disusun oleh</b></td><td><b>Disetujui oleh</b></td></tr>
-        <tr><td><br><br><br></td><td><br><br><br></td></tr>
-        <tr><td><u>{}</u><br>Bendahara</td><td><u>{}</u><br>Direktur/Pimpinan</td></tr>
-        <tr><td colspan='2'><br><br></td></tr>
-        <tr><td><b>Mengetahui</b></td><td><b>Mengetahui</b></td></tr>
-        <tr><td><br><br><br></td><td><br><br><br></td></tr>
-        <tr><td><u>{}</u><br>Kepala Desa</td><td><u>{}</u><br>Ketua BPD</td></tr>
-    </table>
-    <br><br>
-""".format(bendahara, direktur, kepala_desa, ketua_bpd), unsafe_allow_html=True)
-
-st.success("✅ Struktur akun lengkap dan lembar pengesahan otomatis berhasil dimuat. Siap lanjut ke Laba Rugi, Neraca, dan Arus Kas otomatis.")
-
-import pandas as pd
-
-# === LIST AKUN ===
+# === DAFTAR AKUN STANDAR SISKEUDES ===
 kode_akun = [
     "4.1.1", "4.1.2", "4.1.3", "4.1.4", "4.1.5", "4.1.6", "4.1.7",
     "5.1.1", "5.1.2", "5.1.3", "5.1.4", "5.1.5", "5.1.6",
@@ -131,13 +94,31 @@ tipe = (
     ["Kredit"] * 5               # Ekuitas
 )
 
-# Cek panjang data
 assert len(kode_akun) == len(nama_akun) == len(posisi) == len(tipe), "Jumlah elemen tidak sama"
 
-# Buat DataFrame daftar akun
 daftar_akun = pd.DataFrame({
     "Kode Akun": kode_akun,
     "Nama Akun": nama_akun,
     "Posisi": posisi,
     "Tipe": tipe
 })
+
+with st.expander("📚 Daftar Akun Standar SISKEUDES"):
+    st.dataframe(daftar_akun, use_container_width=True)
+
+# LEMBAR PENGESAHAN
+st.markdown("""
+    <br><br><br>
+    <table width='100%' style='text-align:center;'>
+        <tr><td><b>Disusun oleh</b></td><td><b>Disetujui oleh</b></td></tr>
+        <tr><td><br><br><br></td><td><br><br><br></td></tr>
+        <tr><td><u>{}</u><br>Bendahara</td><td><u>{}</u><br>Direktur/Pimpinan</td></tr>
+        <tr><td colspan='2'><br><br></td></tr>
+        <tr><td><b>Mengetahui</b></td><td><b>Mengetahui</b></td></tr>
+        <tr><td><br><br><br></td><td><br><br><br></td></tr>
+        <tr><td><u>{}</u><br>Kepala Desa</td><td><u>{}</u><br>Ketua BPD</td></tr>
+    </table>
+    <br><br>
+""".format(bendahara, direktur, kepala_desa, ketua_bpd), unsafe_allow_html=True)
+
+st.success("✅ Struktur akun lengkap dan lembar pengesahan otomatis berhasil dimuat. Siap lanjut ke Laba Rugi, Neraca, dan Arus Kas otomatis.")
