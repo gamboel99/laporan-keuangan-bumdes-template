@@ -33,10 +33,25 @@ with col_logo2:
     if os.path.exists("logo_bumdes.png"):
         st.image("logo_bumdes.png", width=80)
 
+# === TAMPILKAN DAFTAR AKUN ===
+st.subheader("📖 Daftar Kode Akun")
+kode_akun_df = pd.DataFrame([
+    {"Kode": "4-100", "Akun": "Pendapatan Usaha", "Posisi": "Laba Rugi", "Tipe": "Kredit"},
+    {"Kode": "5-100", "Akun": "Beban Operasional", "Posisi": "Laba Rugi", "Tipe": "Debit"},
+    {"Kode": "3-100", "Akun": "Modal Awal", "Posisi": "Perubahan Ekuitas", "Tipe": "Kredit"},
+    {"Kode": "3-200", "Akun": "Penambahan Modal", "Posisi": "Perubahan Ekuitas", "Tipe": "Kredit"},
+    {"Kode": "3-300", "Akun": "Prive", "Posisi": "Perubahan Ekuitas", "Tipe": "Debit"},
+    {"Kode": "1-100", "Akun": "Kas", "Posisi": "Neraca", "Tipe": "Debit"},
+    {"Kode": "1-200", "Akun": "Piutang", "Posisi": "Neraca", "Tipe": "Debit"},
+    {"Kode": "1-300", "Akun": "Peralatan", "Posisi": "Neraca", "Tipe": "Debit"},
+    {"Kode": "2-100", "Akun": "Utang", "Posisi": "Neraca", "Tipe": "Kredit"},
+])
+st.dataframe(kode_akun_df, use_container_width=True)
+
 # === INISIALISASI ===
 key_gl = f"gl_{lembaga}_{desa}_{tahun}"
 if key_gl not in st.session_state:
-    st.session_state[key_gl] = pd.DataFrame(columns=["Tanggal", "Akun", "Debit", "Kredit", "Keterangan", "Bukti"])
+    st.session_state[key_gl] = pd.DataFrame(columns=["Tanggal", "Kode Akun", "Akun", "Debit", "Kredit", "Keterangan", "Bukti"])
 
 # === FORM TAMBAH TRANSAKSI ===
 with st.expander("➕ Tambah Transaksi"):
@@ -44,9 +59,12 @@ with st.expander("➕ Tambah Transaksi"):
     with col1:
         tanggal = st.date_input("Tanggal", datetime.today())
     with col2:
-        akun = st.text_input("Akun")
+        kode_akun = st.selectbox("Kode Akun", kode_akun_df["Kode"])
     with col3:
         keterangan = st.text_input("Keterangan")
+
+    akun_row = kode_akun_df[kode_akun_df["Kode"] == kode_akun].iloc[0]
+    akun = akun_row["Akun"]
 
     col4, col5, col6 = st.columns(3)
     with col4:
@@ -66,6 +84,7 @@ with st.expander("➕ Tambah Transaksi"):
                 bukti_path = ""
             new_row = pd.DataFrame([{
                 "Tanggal": tanggal.strftime("%Y-%m-%d"),
+                "Kode Akun": kode_akun,
                 "Akun": akun,
                 "Debit": debit,
                 "Kredit": kredit,
@@ -81,45 +100,30 @@ with st.expander("➕ Tambah Transaksi"):
 st.subheader("📋 Daftar Transaksi")
 gl_df = st.session_state[key_gl].copy()
 if not gl_df.empty:
-    for idx, row in gl_df.iterrows():
-        st.write(f"**{row['Tanggal']} - {row['Akun']}** | Debit: Rp{row['Debit']}, Kredit: Rp{row['Kredit']}")
+    for i in gl_df.index:
+        row = gl_df.loc[i]
+        st.write(f"{row['Tanggal']} | {row['Kode Akun']} - {row['Akun']} | Debit: Rp{row['Debit']}, Kredit: Rp{row['Kredit']}")
         st.caption(row['Keterangan'])
         if row['Bukti'] and os.path.exists(row['Bukti']):
             if row['Bukti'].endswith(".pdf"):
                 st.markdown(f"[📄 Lihat Bukti PDF]({row['Bukti']})")
             else:
                 st.image(row['Bukti'], width=200)
-        col_del = st.columns([1, 5])
-        with col_del[0]:
-            if st.button(f"❌ Hapus", key=f"hapus_{idx}"):
-                st.session_state[key_gl].drop(index=idx, inplace=True)
-                st.session_state[key_gl].reset_index(drop=True, inplace=True)
-                st.experimental_rerun()
+        if st.button(f"❌ Hapus", key=f"hapus_{i}"):
+            st.session_state[key_gl] = gl_df.drop(i).reset_index(drop=True)
+            st.experimental_rerun()
 else:
-    st.info("Belum ada transaksi yang dimasukkan.")
+    st.info("Belum ada transaksi.")
 
-# === TAMPILKAN PENGESAHAN DI WEB ===
-st.markdown("---")
-st.markdown("**LEMBAR PENGESAHAN**")
-st.markdown(f"Desa {desa}, Juli {tahun}")
-col_atas = st.columns(2)
-with col_atas[0]:
-    st.markdown("Dibuat oleh:")
-    st.markdown("**Bendahara**")
-    st.markdown("<br><br><br>**<u>{}</u>**".format(bendahara), unsafe_allow_html=True)
-with col_atas[1]:
-    st.markdown("Disetujui oleh:")
-    st.markdown(f"**Ketua {lembaga}**")
-    st.markdown("<br><br><br>**<u>{}</u>**".format(direktur), unsafe_allow_html=True)
+# === UNDUH GL EXCEL ===
+def download_excel(df, filename):
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+        df.to_excel(writer, index=False, sheet_name='GL')
+    data = output.getvalue()
+    b64 = base64.b64encode(data).decode()
+    href = f"<a href='data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,{b64}' download='{filename}'>📤 Download Buku Besar (Excel)</a>"
+    return href
 
-col_bawah = st.columns(2)
-with col_bawah[0]:
-    st.markdown("Mengetahui:")
-    st.markdown("**Kepala Desa**")
-    st.markdown("<br><br><br>**<u>{}</u>**".format(kepala_desa), unsafe_allow_html=True)
-with col_bawah[1]:
-    st.markdown("Mengetahui:")
-    st.markdown("**Ketua BPD**")
-    st.markdown("<br><br><br>**<u>{}</u>**".format(ketua_bpd), unsafe_allow_html=True)
-
-# Selanjutnya bisa ditambahkan ekspor PDF jika diperlukan
+st.markdown(download_excel(gl_df, f"General_Ledger_{lembaga}_{desa}_{tahun}.xlsx"), unsafe_allow_html=True)
+])
