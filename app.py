@@ -5,19 +5,23 @@ from datetime import datetime
 
 st.set_page_config(page_title="Laporan Keuangan BUMDes", layout="wide")
 
-# Identitas
-st.sidebar.title("Identitas BUMDes")
-nama_bumdes = st.sidebar.text_input("Nama BUMDes", "Buwana Raharja")
-desa = st.sidebar.text_input("Desa", "Keling")
+# === Logo dan Identitas ===
+st.sidebar.image("https://upload.wikimedia.org/wikipedia/commons/9/99/Logo_Kab_Kediri.png", width=100, caption="Pemerintah Desa Keling")
+st.sidebar.image("https://upload.wikimedia.org/wikipedia/commons/thumb/f/f2/Logo_BUMDes.svg/1200px-Logo_BUMDes.svg.png", width=100, caption="BUMDes")
+
+st.sidebar.title("Identitas Lembaga")
+desa = st.sidebar.text_input("Nama Desa", "Keling")
+lembaga = st.sidebar.selectbox("Lembaga", ["BUMDes", "PKK", "Karang Taruna", "LPMD", "Posyandu", "Lainnya"])
 tahun = st.sidebar.number_input("Tahun Laporan", 2025, step=1)
 
-st.title("📘 Buku Besar (General Ledger)")
+st.title(f"📘 Buku Besar ({lembaga} {desa})")
 
-# Inisialisasi Buku Besar
-if "gl" not in st.session_state:
-    st.session_state.gl = pd.DataFrame(columns=["Tanggal", "Akun", "Debit", "Kredit", "Keterangan"])
+# === Session Key per lembaga & tahun ===
+key_session = f"gl_{desa}_{lembaga}_{tahun}"
+if key_session not in st.session_state:
+    st.session_state[key_session] = pd.DataFrame(columns=["Tanggal", "Akun", "Debit", "Kredit", "Keterangan"])
 
-# ==== Form Tambah Transaksi ====
+# === Form Tambah Transaksi ===
 with st.expander("➕ Tambah Transaksi"):
     col1, col2, col3 = st.columns(3)
     with col1:
@@ -42,32 +46,32 @@ with st.expander("➕ Tambah Transaksi"):
                 "Kredit": kredit,
                 "Keterangan": keterangan
             }])
-            st.session_state.gl = pd.concat([st.session_state.gl, new_row], ignore_index=True)
+            st.session_state[key_session] = pd.concat([st.session_state[key_session], new_row], ignore_index=True)
             st.success("✅ Transaksi berhasil disimpan.")
         else:
             st.warning("⚠️ Lengkapi akun dan nilai debit/kredit.")
 
-# ==== Tampilkan GL dengan opsi hapus ====
+# === Tampilkan GL dengan opsi hapus ===
 st.subheader("📋 Daftar Transaksi")
-gl_df = st.session_state.gl.copy()
+gl_df = st.session_state[key_session].copy()
 
 if not gl_df.empty:
     gl_df["Hapus?"] = False
-    edited = st.data_editor(gl_df, num_rows="dynamic", use_container_width=True, key="gl_editor")
+    edited = st.data_editor(gl_df, num_rows="dynamic", use_container_width=True, key=f"gl_editor_{key_session}")
     if st.button("🗑️ Hapus Transaksi yang Dicentang"):
         hapus_idx = edited[edited["Hapus?"] == True].index
-        st.session_state.gl.drop(index=hapus_idx, inplace=True)
-        st.session_state.gl.reset_index(drop=True, inplace=True)
+        st.session_state[key_session].drop(index=hapus_idx, inplace=True)
+        st.session_state[key_session].reset_index(drop=True, inplace=True)
         st.success("✅ Transaksi berhasil dihapus.")
 else:
     st.info("Belum ada transaksi yang dimasukkan.")
 
-# ==== Fungsi bantu ====
+# === Fungsi bantu ===
 def total_akun(df, kata):
     return df[df["Akun"].str.contains(kata, case=False, na=False)]["Debit"].sum() - df[df["Akun"].str.contains(kata, case=False, na=False)]["Kredit"].sum()
 
-# ==== Olah Data Keuangan ====
-df = st.session_state.gl
+# === Olah Data Keuangan ===
+df = st.session_state[key_session]
 pendapatan = total_akun(df, "Pendapatan")
 beban = total_akun(df, "Beban")
 laba_bersih = pendapatan - beban
@@ -87,7 +91,7 @@ utang = total_akun(df, "Utang")
 aset = kas_akhir + piutang + peralatan
 total_ke = utang + modal_akhir
 
-# ==== Tampilkan Semua Laporan ====
+# === Tampilkan Semua Laporan ===
 st.header("📑 Laporan Keuangan Otomatis")
 
 col1, col2 = st.columns(2)
@@ -117,13 +121,13 @@ with col2:
     st.markdown(f"- **Ekuitas:** Rp {modal_akhir:,.2f}")
     st.markdown(f"- **Total Kewajiban + Ekuitas:** Rp {total_ke:,.2f}")
 
-# ==== Ekspor HTML ====
+# === Ekspor HTML ===
 st.subheader("📥 Unduh Ikhtisar")
 
 def export_html():
     html = f"""
-    <h2>Ikhtisar Laporan Keuangan BUMDes</h2>
-    <p><strong>{nama_bumdes} - Desa {desa} - Tahun {tahun}</strong></p>
+    <h2>Ikhtisar Laporan Keuangan</h2>
+    <p><strong>{lembaga} - Desa {desa} - Tahun {tahun}</strong></p>
     <h3>Laba Rugi</h3>
     <ul>
         <li>Pendapatan: Rp {pendapatan:,.2f}</li>
@@ -153,6 +157,6 @@ def export_html():
     </ul>
     """
     b64 = base64.b64encode(html.encode()).decode()
-    return f'<a href="data:text/html;base64,{b64}" download="ikhtisar_laporan.html">📤 Unduh HTML</a>'
+    return f'<a href="data:text/html;base64,{b64}" download="ikhtisar_laporan_{lembaga}_{desa}_{tahun}.html">📤 Unduh HTML</a>'
 
 st.markdown(export_html(), unsafe_allow_html=True)
