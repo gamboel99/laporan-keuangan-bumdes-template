@@ -15,12 +15,48 @@ nama_bumdes = st.sidebar.text_input("Nama Lembaga", "Buwana Raharja")
 tahun = st.sidebar.number_input("Tahun Laporan", 2025, step=1)
 
 # === PEJABAT UNTUK PENGESAHAN ===
-st.sidebar.markdown("---")
-st.sidebar.subheader("Pejabat Tanda Tangan")
-bendahara = st.sidebar.text_input("Nama Bendahara", "Siti Aminah")
-direktur = st.sidebar.text_input("Nama Ketua/Pimpinan", "Bambang Setiawan")
-kepala_desa = st.sidebar.text_input("Nama Kepala Desa", "Sugeng Riyadi")
-ketua_bpd = st.sidebar.text_input("Nama Ketua BPD", "Dwi Purnomo")
+# === LEMBAR PENGESAHAN ===
+st.subheader("🖊️ Lembar Pengesahan")
+
+ttd_html = f"""
+<br><br><br>
+<table style='width:100%; text-align:center; font-size:16px;'>
+  <tr>
+    <td><b>Dibuat oleh</b></td>
+    <td><b>Disetujui oleh</b></td>
+  </tr>
+  <tr>
+    <td><b>Bendahara</b></td>
+    <td><b>Direktur {lembaga}</b></td>
+  </tr>
+  <tr><td><br><br><br></td><td></td></tr>
+  <tr>
+    <td><u>{bendahara}</u></td>
+    <td><u>{direktur}</u></td>
+  </tr>
+</table>
+<br><br>
+<table style='width:100%; text-align:center; font-size:16px;'>
+  <tr>
+    <td><b>Mengetahui</b></td>
+    <td></td>
+    <td><b>Mengetahui</b></td>
+  </tr>
+  <tr>
+    <td><b>Kepala Desa {desa}</b></td>
+    <td></td>
+    <td><b>Ketua BPD</b></td>
+  </tr>
+  <tr><td><br><br><br></td><td></td><td></td></tr>
+  <tr>
+    <td><u>{kepala_desa}</u></td>
+    <td></td>
+    <td><u>{ketua_bpd}</u></td>
+  </tr>
+</table>
+"""
+
+st.markdown(ttd_html, unsafe_allow_html=True)
 
 # === KOP LAPORAN ===
 st.markdown("""
