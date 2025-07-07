@@ -190,4 +190,7 @@ if not df_gl.empty:
     buf_eq = BytesIO()
     with pd.ExcelWriter(buf_eq, engine="xlsxwriter") as w:
         ek.to_excel(w, index=False, sheet_name="Ekuitas")
-    st.markdown(f"<a href='data:application/vnd.openxmlformats-officedocument-spreadsheet;base64,{base64.b64encode(buf_eq.getvalue()).decode()}' download='Ekuitas_{tahun}.xlsx'>🧾 Download Ekuitas (Excel)</a>", unsafe
+    st.markdown(
+    f"<a href='data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,{base64.b64encode(buf_eq.getvalue()).decode()}' download='Ekuitas_{tahun}.xlsx'>🧾 Download Ekuitas (Excel)</a>",
+    unsafe_allow_html=True
+)
