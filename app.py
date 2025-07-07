@@ -38,57 +38,58 @@ with col_logo2:
     if os.path.exists("logo_bumdes.png"):
         st.image("logo_bumdes.png", width=80)
 
-st.title(f"📘 Buku Besar ({lembaga})")
-
-# === INISIALISASI ===
+# === INISIALISASI DATAFRAME ===
 key_gl = f"gl_{lembaga}_{desa}_{tahun}"
 if key_gl not in st.session_state:
     st.session_state[key_gl] = pd.DataFrame(columns=["Tanggal", "Kode Akun", "Nama Akun", "Debit", "Kredit", "Keterangan", "Bukti"])
 
-# === DAFTAR AKUN STANDAR SISKEUDES ===
-kode_akun = [
-    "4.1.1", "4.1.2", "4.1.3", "4.1.4", "4.1.5", "4.1.6", "4.1.7",
-    "5.1.1", "5.1.2", "5.1.3", "5.1.4", "5.1.5", "5.1.6",
-    "5.2.1", "5.2.2", "5.2.3", "5.2.4", "5.2.5", "5.2.6", "5.2.7", "5.2.8", "5.2.9", "5.2.10", "5.2.11",
-    "6.1", "6.2", "6.3", "6.4", "6.5", "6.6",
-    "1.1.1", "1.1.2", "1.1.3", "1.1.4", "1.1.5", "1.1.6", "1.1.7", "1.1.8",
-    "1.2.1", "1.2.2", "1.2.3", "1.2.4", "1.2.5", "1.2.6", "1.2.7", "1.2.8", "1.2.9",
-    "2.1.1", "2.1.2", "2.1.3", "2.1.4", "2.1.5",
-    "2.2.1", "2.2.2", "2.2.3",
-    "3.1.1", "3.1.2", "3.1.3", "3.1.4", "3.1.5"
-]
+# === JURNAL UMUM ===
+st.header("📑 Jurnal Umum")
+st.caption("Input transaksi harian secara manual")
+df_gl = st.session_state[key_gl]
 
-nama_akun = [
-    "Penjualan Barang Dagang", "Pendapatan Jasa", "Pendapatan Sewa Aset", "Pendapatan Simpan Pinjam", "Pendapatan Usaha Tani", "Pendapatan Wisata", "Pendapatan Lainnya",
-    "Pembelian Barang Dagang", "Beban Produksi", "Beban Pemeliharaan Usaha", "Beban Penyusutan Aset Usaha", "Bahan Baku / Operasional", "Beban Lainnya",
-    "Gaji dan Tunjangan", "Listrik, Air, Komunikasi", "Transportasi", "Administrasi & Umum", "Sewa Tempat", "Perlengkapan", "Penyusutan Aset Tetap", "Penyuluhan", "Promosi & Publikasi", "Operasional Wisata", "CSR / Kegiatan Desa",
-    "Pendapatan Bunga", "Pendapatan Investasi", "Pendapatan Lain-lain", "Beban Bunga", "Kerugian Penjualan Aset", "Pajak",
-    "Kas", "Bank", "Piutang Usaha", "Persediaan Dagang", "Persediaan Bahan Baku", "Uang Muka", "Investasi Pendek", "Pendapatan Diterima Di Muka",
-    "Tanah", "Bangunan", "Peralatan", "Kendaraan", "Inventaris", "Aset Tetap Lainnya", "Akumulasi Penyusutan", "Investasi Panjang", "Aset Lain-lain",
-    "Utang Usaha", "Utang Gaji", "Utang Pajak", "Pendapatan Diterima Di Muka", "Utang Lain-lain",
-    "Pinjaman Bank", "Pinjaman Pemerintah", "Utang Pihak Ketiga",
-    "Modal Desa", "Modal Pihak Ketiga", "Saldo Laba Ditahan", "Laba Tahun Berjalan", "Cadangan Sosial / Investasi"
-]
+with st.form("form_jurnal"):
+    col1, col2, col3 = st.columns([2, 2, 2])
+    with col1:
+        tanggal = st.date_input("Tanggal")
+        kode = st.text_input("Kode Akun")
+    with col2:
+        nama = st.text_input("Nama Akun")
+        debit = st.number_input("Debit", value=0.0, step=1000.0)
+    with col3:
+        kredit = st.number_input("Kredit", value=0.0, step=1000.0)
+        keterangan = st.text_input("Keterangan")
+        bukti = st.file_uploader("Bukti Transaksi", type=["jpg", "jpeg", "png", "pdf"], label_visibility="collapsed")
 
-posisi = [
-    "Pendapatan"]*7 + ["HPP"]*6 + ["Beban Usaha"]*11 + ["Non-Usaha"]*6 + ["Aset Lancar"]*8 + ["Aset Tetap"]*9 + ["Kewajiban Pendek"]*5 + ["Kewajiban Panjang"]*3 + ["Ekuitas"]*5
+    submitted = st.form_submit_button("➕ Tambah Transaksi")
+    if submitted:
+        st.session_state[key_gl] = pd.concat([st.session_state[key_gl], pd.DataFrame.from_records([{
+            "Tanggal": tanggal,
+            "Kode Akun": kode,
+            "Nama Akun": nama,
+            "Debit": debit,
+            "Kredit": kredit,
+            "Keterangan": keterangan,
+            "Bukti": bukti.name if bukti else ""
+        }])], ignore_index=True)
+        st.success("✅ Transaksi berhasil ditambahkan")
+        st.experimental_rerun()
 
-tipe = [
-    "Kredit"]*7 + ["Debit"]*6 + ["Debit"]*11 + ["Kredit"]*3 + ["Debit"]*2 + ["Kredit"]*1 + ["Debit"]*5 + ["Debit"]*9 + ["Kredit"]*5 + ["Kredit"]*3 + ["Kredit"]*5
+st.dataframe(df_gl, use_container_width=True)
 
-assert len(kode_akun) == len(nama_akun) == len(posisi) == len(tipe), "Jumlah elemen pada daftar akun tidak sama."
+# === DOWNLOAD GENERAL LEDGER ===
+def download_excel(df, filename):
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+        df.to_excel(writer, index=False, sheet_name='General Ledger')
+    processed_data = output.getvalue()
+    b64 = base64.b64encode(processed_data).decode()
+    href = f'<a href="data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,{b64}" download="{filename}">📥 Download General Ledger Excel</a>'
+    return href
 
-daftar_akun = pd.DataFrame({
-    "Kode Akun": kode_akun,
-    "Nama Akun": nama_akun,
-    "Posisi": posisi,
-    "Tipe": tipe
-})
+st.markdown(download_excel(df_gl, f"General_Ledger_{lembaga}_{desa}_{tahun}.xlsx"), unsafe_allow_html=True)
 
-with st.expander("📚 Daftar Akun Standar SISKEUDES"):
-    st.dataframe(daftar_akun, use_container_width=True)
-
-# LEMBAR PENGESAHAN
+# === LEMBAR PENGESAHAN ===
 st.markdown("""
     <br><br><br>
     <table width='100%' style='text-align:center;'>
@@ -103,4 +104,4 @@ st.markdown("""
     <br><br>
 """.format(bendahara, direktur, kepala_desa, ketua_bpd), unsafe_allow_html=True)
 
-st.success("✅ Struktur akun lengkap dan lembar pengesahan otomatis berhasil dimuat. Siap lanjut ke Laba Rugi, Neraca, dan Arus Kas otomatis.")
+st.success("✅ General Ledger dan Lembar Pengesahan berhasil dimuat. Lanjutkan ke laporan otomatis di bawah ini.")
