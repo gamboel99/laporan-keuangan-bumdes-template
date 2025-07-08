@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import base64
 from datetime import datetime
 import os
 from io import BytesIO
@@ -21,21 +22,6 @@ direktur = st.sidebar.text_input("Nama Ketua/Pimpinan", "Bambang Setiawan")
 kepala_desa = st.sidebar.text_input("Nama Kepala Desa", "Sugeng Riyadi")
 ketua_bpd = st.sidebar.text_input("Nama Ketua BPD", "Dwi Purnomo")
 
-# === DAFTAR AKUN STANDAR ===
-kode_akun = ["4.1.1", "4.1.2", "5.1.1"]
-nama_akun = ["Pendapatan Jual", "Pendapatan Sewa", "Pembelian Barang"]
-posisi = ["Pendapatan", "Pendapatan", "HPP"]
-tipe = ["Kredit", "Kredit", "Debit"]
-
-assert len(kode_akun) == len(nama_akun) == len(posisi) == len(tipe), "Jumlah elemen pada daftar akun tidak sama."
-
-daftar_akun = pd.DataFrame({
-    "Kode Akun": kode_akun,
-    "Nama Akun": nama_akun,
-    "Posisi": posisi,
-    "Tipe": tipe
-})
-
 # === KOP LAPORAN ===
 st.markdown(f"""
     <h3 style='text-align:center;'>Laporan Keuangan {lembaga} {nama_bumdes} Desa {desa}</h3>
@@ -52,44 +38,56 @@ with col_logo2:
     if os.path.exists("logo_bumdes.png"):
         st.image("logo_bumdes.png", width=80)
 
-# === GENERAL LEDGER ===
 st.title(f"📘 Buku Besar ({lembaga})")
+
+# === INISIALISASI ===
 key_gl = f"gl_{lembaga}_{desa}_{tahun}"
 if key_gl not in st.session_state:
     st.session_state[key_gl] = pd.DataFrame(columns=["Tanggal", "Kode Akun", "Nama Akun", "Debit", "Kredit", "Keterangan", "Bukti"])
 
-with st.form("form_transaksi"):
-    st.subheader("✏️ Input Transaksi")
-    tanggal = st.date_input("Tanggal", datetime.today())
-    akun_nama = st.selectbox("Pilih Nama Akun", daftar_akun["Nama Akun"])
-    kode_otomatis = daftar_akun[daftar_akun["Nama Akun"] == akun_nama]["Kode Akun"].values[0]
-    tipe_otomatis = daftar_akun[daftar_akun["Nama Akun"] == akun_nama]["Tipe"].values[0]
-    st.text(f"Kode Akun: {kode_otomatis} | Posisi: {tipe_otomatis}")
-    jumlah = st.number_input("Jumlah", min_value=0.0, step=1000.0)
-    keterangan = st.text_input("Keterangan")
-    bukti = st.file_uploader("Upload Bukti Transaksi (Opsional)", type=["jpg", "png", "pdf"])
-    submitted = st.form_submit_button("Simpan")
+# === PEDOMAN AKUN MANUAL ===
+with st.expander("📚 Pedoman Daftar Akun Manual (SISKEUDES)"):
+    st.markdown("""
+    | Kode Akun | Nama Akun | Posisi | Tipe |
+    |-----------|-----------|--------|------|
+    | 5.2.1     | Gaji dan Tunjangan | Beban Usaha | Debit |
+    | 4.1.1     | Penjualan Barang Dagang | Pendapatan | Kredit |
+    | 1.1.1     | Kas | Aset Lancar | Debit |
+    | ...       | ...       | ...    | ...  |
+    
+    👉 Silakan input berdasarkan tabel di atas untuk menghindari kesalahan posisi debit/kredit.
+    """, unsafe_allow_html=True)
 
-    if submitted:
-        debit = jumlah if tipe_otomatis == "Debit" else 0
-        kredit = jumlah if tipe_otomatis == "Kredit" else 0
-        st.session_state[key_gl] = pd.concat([
-            st.session_state[key_gl],
-            pd.DataFrame.from_records([{
-                "Tanggal": tanggal,
-                "Kode Akun": kode_otomatis,
-                "Nama Akun": akun_nama,
-                "Debit": debit,
-                "Kredit": kredit,
-                "Keterangan": keterangan,
-                "Bukti": bukti.name if bukti else ""
-            }])
-        ], ignore_index=True)
-        st.success("Transaksi berhasil disimpan")
+# === FORM INPUT TRANSAKSI ===
+st.subheader("✍️ Input Transaksi Buku Besar")
+with st.form("form_gl", clear_on_submit=True):
+    tgl = st.date_input("Tanggal")
+    kode_akun = st.text_input("Kode Akun")
+    akun_nama = st.text_input("Nama Akun")
+    posisi = st.selectbox("Posisi Akun", ["Debit", "Kredit"])
+    jumlah = st.number_input("Jumlah", min_value=0.0, step=1000.0)
+    keterangan = st.text_area("Keterangan")
+    bukti = st.file_uploader("Upload Bukti Transaksi (Opsional)", type=["jpg", "png", "pdf"])
+    simpan = st.form_submit_button("✅ Simpan Transaksi")
+
+if simpan:
+    debit = jumlah if posisi == "Debit" else 0
+    kredit = jumlah if posisi == "Kredit" else 0
+    new_row = {"Tanggal": tgl, "Kode Akun": kode_akun, "Nama Akun": akun_nama, "Debit": debit, "Kredit": kredit, "Keterangan": keterangan, "Bukti": bukti.name if bukti else "-"}
+    st.session_state[key_gl] = pd.concat([st.session_state[key_gl], pd.DataFrame([new_row])], ignore_index=True)
+    st.success("✅ Transaksi berhasil disimpan")
 
 # === TAMPILKAN JURNAL HARIAN ===
-st.subheader("📑 Jurnal Harian (General Ledger)")
-if not st.session_state[key_gl].empty:
-    st.dataframe(st.session_state[key_gl], use_container_width=True)
-else:
-    st.info("Belum ada transaksi.")
+st.subheader("📒 Tabel Jurnal Harian (Buku Besar)")
+df_gl = st.session_state[key_gl]
+
+# Fitur hapus per baris
+hapus_index = st.number_input("Hapus Transaksi Nomor Baris (Opsional)", min_value=0, max_value=len(df_gl)-1 if len(df_gl) > 0 else 0, step=1)
+if st.button("🗑️ Hapus Transaksi Ini"):
+    st.session_state[key_gl] = df_gl.drop(hapus_index).reset_index(drop=True)
+    st.experimental_rerun()
+
+st.dataframe(df_gl.style.set_table_attributes('border="1" class="dataframe table table-bordered table-sm"'), use_container_width=True)
+
+# Catatan: Laporan otomatis Laba Rugi, Neraca, Arus Kas akan ditambahkan selanjutnya.
+st.info("📌 Silakan lanjutkan input untuk menghasilkan Laporan Otomatis: Laba Rugi, Neraca, dan Arus Kas")
