@@ -96,7 +96,8 @@ st.download_button("⬇️ Download Buku Besar (Excel)", data=df_gl.to_csv(index
 # === PERHITUNGAN LABA RUGI OTOMATIS ===
 st.subheader("📊 Laporan Laba Rugi Otomatis")
 pd_laba = df_gl[df_gl["Nama Akun"].isin(daftar_akun[daftar_akun["Posisi"] == "Pendapatan"]["Nama Akun"])]
-pd_beban = df_gl[df_gl["Nama Akun"].isin(daftar_akun[daftar_akun["Posisi"].isin(["Beban Usaha", "HPP", "Non-Usaha")]["Nama Akun"])]
+pd_beban = df_gl[df_gl["Nama Akun"].isin(daftar_akun[daftar_akun["Posisi"].isin(["Beban Usaha", "HPP", "Non-Usaha"])]["Nama Akun"])]
+
 
 total_pendapatan = pd_laba["Kredit"].sum()
 total_beban = pd_beban["Debit"].sum()
