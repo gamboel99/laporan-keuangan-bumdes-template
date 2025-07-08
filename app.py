@@ -28,25 +28,73 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 # === PEDOMAN AKUN ===
-pedoman_akun = pd.DataFrame({
-    "Nama Akun": [
-        "Penjualan Barang Dagang", "Pendapatan Jasa", "Pendapatan Sewa Aset", "Pendapatan Simpan Pinjam", "Pendapatan Usaha Tani", "Pendapatan Wisata", "Pendapatan Lainnya",
-        "Pembelian Barang Dagang", "Beban Produksi", "Beban Pemeliharaan Usaha", "Beban Penyusutan Aset Usaha", "Bahan Baku / Operasional", "Beban Lainnya",
-        "Gaji dan Tunjangan", "Listrik, Air, Komunikasi", "Transportasi", "Administrasi & Umum", "Sewa Tempat", "Perlengkapan", "Penyusutan Aset Tetap", "Penyuluhan", "Promosi & Publikasi", "Operasional Wisata", "CSR / Kegiatan Desa",
-        "Pendapatan Bunga", "Pendapatan Investasi", "Pendapatan Lain-lain", "Beban Bunga", "Kerugian Penjualan Aset", "Pajak",
-        "Kas", "Bank", "Piutang Usaha", "Persediaan Dagang", "Persediaan Bahan Baku", "Uang Muka", "Investasi Pendek", "Pendapatan Diterima Di Muka",
-        "Tanah", "Bangunan", "Peralatan", "Kendaraan", "Inventaris", "Aset Tetap Lainnya", "Akumulasi Penyusutan", "Investasi Panjang", "Aset Lain-lain",
-        "Utang Usaha", "Utang Gaji", "Utang Pajak", "Pendapatan Diterima Di Muka", "Utang Lain-lain",
-        "Pinjaman Bank", "Pinjaman Pemerintah", "Utang Pihak Ketiga",
-        "Modal Desa", "Modal Pihak Ketiga", "Saldo Laba Ditahan", "Laba Tahun Berjalan", "Cadangan Sosial / Investasi"
-    ],
-    "Posisi": [
-        "Kredit"]*7 + ["Debit"]*6 + ["Debit"]*11 + ["Kredit"]*3 + ["Debit"]*8 + ["Debit"]*9 + ["Kredit"]*5 + ["Kredit"]*3 + ["Kredit"]*5
-})
+akun_data = [
+    ("Penjualan Barang Dagang", "Pendapatan", "Kredit"),
+    ("Pendapatan Jasa", "Pendapatan", "Kredit"),
+    ("Pendapatan Sewa Aset", "Pendapatan", "Kredit"),
+    ("Pendapatan Simpan Pinjam", "Pendapatan", "Kredit"),
+    ("Pendapatan Usaha Tani", "Pendapatan", "Kredit"),
+    ("Pendapatan Wisata", "Pendapatan", "Kredit"),
+    ("Pendapatan Lainnya", "Pendapatan", "Kredit"),
+    ("Pembelian Barang Dagang", "HPP", "Debit"),
+    ("Beban Produksi", "HPP", "Debit"),
+    ("Beban Pemeliharaan Usaha", "HPP", "Debit"),
+    ("Beban Penyusutan Aset Usaha", "HPP", "Debit"),
+    ("Bahan Baku / Operasional", "HPP", "Debit"),
+    ("Beban Lainnya", "HPP", "Debit"),
+    ("Gaji dan Tunjangan", "Beban Usaha", "Debit"),
+    ("Listrik, Air, Komunikasi", "Beban Usaha", "Debit"),
+    ("Transportasi", "Beban Usaha", "Debit"),
+    ("Administrasi & Umum", "Beban Usaha", "Debit"),
+    ("Sewa Tempat", "Beban Usaha", "Debit"),
+    ("Perlengkapan", "Beban Usaha", "Debit"),
+    ("Penyusutan Aset Tetap", "Beban Usaha", "Debit"),
+    ("Penyuluhan", "Beban Usaha", "Debit"),
+    ("Promosi & Publikasi", "Beban Usaha", "Debit"),
+    ("Operasional Wisata", "Beban Usaha", "Debit"),
+    ("CSR / Kegiatan Desa", "Beban Usaha", "Debit"),
+    ("Pendapatan Bunga", "Non-Usaha", "Kredit"),
+    ("Pendapatan Investasi", "Non-Usaha", "Kredit"),
+    ("Pendapatan Lain-lain", "Non-Usaha", "Kredit"),
+    ("Beban Bunga", "Non-Usaha", "Debit"),
+    ("Kerugian Penjualan Aset", "Non-Usaha", "Debit"),
+    ("Pajak", "Non-Usaha", "Debit"),
+    ("Kas", "Aset Lancar", "Debit"),
+    ("Bank", "Aset Lancar", "Debit"),
+    ("Piutang Usaha", "Aset Lancar", "Debit"),
+    ("Persediaan Dagang", "Aset Lancar", "Debit"),
+    ("Persediaan Bahan Baku", "Aset Lancar", "Debit"),
+    ("Uang Muka", "Aset Lancar", "Debit"),
+    ("Investasi Pendek", "Aset Lancar", "Debit"),
+    ("Pendapatan Diterima di Muka", "Aset Lancar", "Kredit"),
+    ("Tanah", "Aset Tetap", "Debit"),
+    ("Bangunan", "Aset Tetap", "Debit"),
+    ("Peralatan", "Aset Tetap", "Debit"),
+    ("Kendaraan", "Aset Tetap", "Debit"),
+    ("Inventaris", "Aset Tetap", "Debit"),
+    ("Aset Tetap Lainnya", "Aset Tetap", "Debit"),
+    ("Akumulasi Penyusutan", "Aset Tetap", "Kredit"),
+    ("Investasi Panjang", "Aset Tetap", "Debit"),
+    ("Aset Lain-lain", "Aset Tetap", "Debit"),
+    ("Utang Usaha", "Kewajiban Pendek", "Kredit"),
+    ("Utang Gaji", "Kewajiban Pendek", "Kredit"),
+    ("Utang Pajak", "Kewajiban Pendek", "Kredit"),
+    ("Pendapatan Diterima Di Muka", "Kewajiban Pendek", "Kredit"),
+    ("Utang Lain-lain", "Kewajiban Pendek", "Kredit"),
+    ("Pinjaman Bank", "Kewajiban Panjang", "Kredit"),
+    ("Pinjaman Pemerintah", "Kewajiban Panjang", "Kredit"),
+    ("Utang Pihak Ketiga", "Kewajiban Panjang", "Kredit"),
+    ("Modal Desa", "Ekuitas", "Kredit"),
+    ("Modal Pihak Ketiga", "Ekuitas", "Kredit"),
+    ("Saldo Laba Ditahan", "Ekuitas", "Kredit"),
+    ("Laba Tahun Berjalan", "Ekuitas", "Kredit"),
+    ("Cadangan Sosial / Investasi", "Ekuitas", "Kredit"),
+]
 
-with st.expander("📚 Pedoman Akun - Posisi Debit/Kredit"):
+pedoman_akun = pd.DataFrame(akun_data, columns=["Nama Akun", "Posisi", "Tipe"])
+
+with st.expander("📚 Pedoman Daftar Akun (Manual)"):
     st.dataframe(pedoman_akun, use_container_width=True)
-
 # === INISIALISASI ===
 key_gl = f"gl_{lembaga}_{desa}_{tahun}"
 if key_gl not in st.session_state:
