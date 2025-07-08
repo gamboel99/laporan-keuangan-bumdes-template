@@ -68,9 +68,12 @@ with tab1:
             tanggal = st.date_input("Tanggal", datetime.today())
             nama_akun = st.selectbox("Pilih Nama Akun", pedoman_akun["Nama Akun"])
         with col2:
-            posisi = pedoman_akun[pedoman_akun["Nama Akun"] == nama_akun]["Tipe"].values[0]
+# Menentukan posisi akun otomatis (Debit/Kredit)
+        posisi = pedoman_akun[pedoman_akun["Nama Akun"] == nama_akun]["Tipe"].values[0]
+
+# Input jumlah berdasarkan posisi
 if posisi == "Debit":
-            jumlah_debit = st.number_input("Jumlah (Debit)", min_value=0.0, step=1000.0)
+    jumlah_debit = st.number_input("Jumlah (Debit)", min_value=0.0, step=1000.0)
     jumlah_kredit = 0.0
 else:
     jumlah_kredit = st.number_input("Jumlah (Kredit)", min_value=0.0, step=1000.0)
@@ -78,14 +81,17 @@ else:
         keterangan = st.text_input("Keterangan")
         simpan = st.form_submit_button("➕ Tambah Transaksi")
 
-        st.session_state.jurnal.append({
-    "Tanggal": tanggal.strftime("%Y-%m-%d"),
-    "Nama Akun": nama_akun,
-    "Posisi": posisi,
-    "Debit": jumlah_debit,
-    "Kredit": jumlah_kredit,
-    "Keterangan": keterangan
-})
+        if simpan:
+    st.session_state.jurnal.append({
+        "Tanggal": tanggal.strftime("%Y-%m-%d"),
+        "Nama Akun": nama_akun,
+        "Posisi": posisi,
+        "Debit": jumlah_debit,
+        "Kredit": jumlah_kredit,
+        "Keterangan": keterangan
+    })
+    st.success("Transaksi berhasil ditambahkan.")
+
 
     # Tabel Transaksi
     df_jurnal = pd.DataFrame(st.session_state.jurnal)
