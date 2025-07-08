@@ -27,7 +27,16 @@ st.markdown(f"""
     <hr>
 """, unsafe_allow_html=True)
 
-# === PEDOMAN AKUN ===
+# === LOGO ===
+col_logo1, col_logo2 = st.columns([1, 6])
+with col_logo1:
+    if os.path.exists("logo_pemdes.png"):
+        st.image("logo_pemdes.png", width=80)
+with col_logo2:
+    if os.path.exists("logo_bumdes.png"):
+        st.image("logo_bumdes.png", width=80)
+
+# === PEDOMAN AKUN (REFERENSI MANUAL) ===
 akun_data = [
     ("Penjualan Barang Dagang", "Pendapatan", "Kredit"),
     ("Pendapatan Jasa", "Pendapatan", "Kredit"),
@@ -90,59 +99,9 @@ akun_data = [
     ("Laba Tahun Berjalan", "Ekuitas", "Kredit"),
     ("Cadangan Sosial / Investasi", "Ekuitas", "Kredit"),
 ]
-
 pedoman_akun = pd.DataFrame(akun_data, columns=["Nama Akun", "Posisi", "Tipe"])
 
 with st.expander("📚 Pedoman Daftar Akun (Manual)"):
     st.dataframe(pedoman_akun, use_container_width=True)
-# === INISIALISASI ===
-key_gl = f"gl_{lembaga}_{desa}_{tahun}"
-if key_gl not in st.session_state:
-    st.session_state[key_gl] = pd.DataFrame(columns=["Tanggal", "Nama Akun", "Debit", "Kredit", "Keterangan"])
 
-df_gl = st.session_state[key_gl]
-
-# === FORM INPUT JURNAL ===
-with st.form("Input Transaksi"):
-    tanggal = st.date_input("Tanggal", value=datetime.today())
-    akun_nama = st.selectbox("Pilih Nama Akun", pedoman_akun["Nama Akun"])
-    posisi = pedoman_akun.loc[pedoman_akun["Nama Akun"] == akun_nama, "Posisi"].values[0]
-    jumlah = st.number_input("Jumlah (Rp)", 0.0, step=1000.0)
-    keterangan = st.text_input("Keterangan")
-    submit = st.form_submit_button("➕ Tambah Transaksi")
-
-    if submit:
-        debit = jumlah if posisi == "Debit" else 0.0
-        kredit = jumlah if posisi == "Kredit" else 0.0
-        new_row = pd.DataFrame([[tanggal, akun_nama, debit, kredit, keterangan]],
-                                columns=["Tanggal", "Nama Akun", "Debit", "Kredit", "Keterangan"])
-        st.session_state[key_gl] = pd.concat([st.session_state[key_gl], new_row], ignore_index=True)
-        st.experimental_rerun()
-
-# === TABEL JURNAL ===
-st.markdown("### 📖 Jurnal Harian (General Ledger)")
-if not df_gl.empty:
-    for i, row in df_gl.iterrows():
-        st.write(f"{row['Tanggal']} | {row['Nama Akun']} | Rp {row['Debit']:,.0f} (D) | Rp {row['Kredit']:,.0f} (K) | {row['Keterangan']}")
-        if st.button(f"Hapus", key=f"hapus_{i}"):
-            st.session_state[key_gl] = df_gl.drop(index=i).reset_index(drop=True)
-            st.experimental_rerun()
-else:
-    st.info("Belum ada transaksi dimasukkan.")
-
-# === LEMBAR PENGESAHAN ===
-st.markdown("""
-    <br><br><br>
-    <table width='100%' style='text-align:center;'>
-        <tr><td><b>Disusun oleh</b></td><td><b>Disetujui oleh</b></td></tr>
-        <tr><td><br><br><br></td><td><br><br><br></td></tr>
-        <tr><td><u>{}</u><br>Bendahara</td><td><u>{}</u><br>Direktur/Pimpinan</td></tr>
-        <tr><td colspan='2'><br><br></td></tr>
-        <tr><td><b>Mengetahui</b></td><td><b>Mengetahui</b></td></tr>
-        <tr><td><br><br><br></td><td><br><br><br></td></tr>
-        <tr><td><u>{}</u><br>Kepala Desa</td><td><u>{}</u><br>Ketua BPD</td></tr>
-    </table>
-    <br><br>
-""".format(bendahara, direktur, kepala_desa, ketua_bpd), unsafe_allow_html=True)
-
-st.success("✅ Siap ditambahkan: Laba Rugi, Neraca, dan Arus Kas otomatis dalam format tabel bergaris. Konfirmasi untuk lanjut.")
+# Lanjutkan di blok selanjutnya: input transaksi, GL tabel, dan laporan otomatis
