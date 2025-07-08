@@ -165,7 +165,8 @@ if not df.empty:
         pdf.cell(200, 10, txt=f"Saldo Kas: Rp {kas:,.2f}", ln=4)
 
         pdf_output = BytesIO()
-        pdf.output(pdf_output)
+        pdf_bytes = pdf.output(dest='S').encode('latin-1')
+        pdf_output.write(pdf_bytes)
         pdf_output.seek(0)
 
         st.download_button(
