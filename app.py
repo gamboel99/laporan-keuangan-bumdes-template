@@ -7,6 +7,7 @@ import pandas as pd
 import os
 from io import BytesIO
 from datetime import datetime
+from fpdf import FPDF
 
 st.set_page_config(page_title="Laporan Keuangan BUMDes", layout="wide")
 
@@ -16,6 +17,7 @@ desa = st.sidebar.text_input("Nama Desa", "Keling")
 lembaga = st.sidebar.selectbox("Nama Lembaga", ["BUMDes", "TPK", "LPMD", "Karang Taruna", "Posyandu", "TSBD", "Pokmas"])
 nama_bumdes = st.sidebar.text_input("Nama Unit", "Buwana Raharja")
 tahun = st.sidebar.number_input("Tahun Laporan", 2025, step=1)
+bulan_filter = st.sidebar.selectbox("Filter Bulan", ["Semua", "01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"])
 
 # === PEJABAT UNTUK PENGESAHAN ===
 st.sidebar.markdown("---")
@@ -98,9 +100,13 @@ with st.form("form_input"):
         st.session_state[key_gl] = pd.concat([df_gl, pd.DataFrame([new_row])], ignore_index=True)
         st.success("✅ Transaksi berhasil ditambahkan.")
 
+# === FILTER BULAN ===
+df_gl = st.session_state[key_gl]
+if bulan_filter != "Semua":
+    df_gl = df_gl[df_gl["Tanggal"].str[5:7] == bulan_filter]
+
 # === TABEL JURNAL & FITUR HAPUS ===
 st.markdown("### 📋 Tabel Jurnal Transaksi")
-df_gl = st.session_state[key_gl]
 if not df_gl.empty:
     st.dataframe(df_gl, use_container_width=True)
     hapus = st.number_input("Hapus transaksi ke (baris)", min_value=1, max_value=len(df_gl), step=1)
@@ -114,7 +120,7 @@ else:
 tabs = st.tabs(["📊 Laba Rugi", "📑 Neraca", "💸 Arus Kas", "📦 Unduh Semua"])
 
 # === PERHITUNGAN OTOMATIS ===
-df = st.session_state[key_gl]
+df = df_gl
 if not df.empty:
     pd_pendapatan = df[df["Nama Akun"].isin(pedoman_akun[pedoman_akun["Posisi"] == "Pendapatan"]["Nama Akun"])]
     pd_beban = df[df["Nama Akun"].isin(pedoman_akun[pedoman_akun["Posisi"] == "Beban"]["Nama Akun"])]
@@ -152,6 +158,21 @@ if not df.empty:
 
     with tabs[3]:
         st.download_button("📥 Unduh Jurnal Excel", data=df.to_csv(index=False).encode(), file_name="jurnal.csv")
+
+        # Export PDF
+        pdf = FPDF()
+        pdf.add_page()
+        pdf.set_font("Arial", size=12)
+        pdf.cell(200, 10, txt="Laporan Keuangan BUMDes", ln=1, align="C")
+        pdf.cell(200, 10, txt=f"Lembaga: {lembaga} - Desa: {desa} - Tahun: {tahun}", ln=2, align="C")
+        pdf.ln(10)
+
+        for i, row in df.iterrows():
+            pdf.cell(200, 10, txt=f"{row['Tanggal']} | {row['Nama Akun']} | D: {row['Debit']} | K: {row['Kredit']}", ln=1)
+
+        buffer = BytesIO()
+        pdf.output(buffer)
+        st.download_button("📥 Unduh PDF", data=buffer.getvalue(), file_name="laporan_bumdes.pdf")
 else:
     st.warning("📭 Belum ada transaksi, laporan belum tersedia.")
 
