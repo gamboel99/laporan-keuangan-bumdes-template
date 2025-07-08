@@ -47,15 +47,15 @@ if key_gl not in st.session_state:
 
 # === DAFTAR AKUN STANDAR SISKEUDES ===
 kode_akun = [
-    "4.1.1", "4.1.2", "4.1.3", "4.1.4", "4.1.5", "4.1.6", "4.1.7",  # Pendapatan
-    "5.1.1", "5.1.2", "5.1.3", "5.1.4", "5.1.5", "5.1.6",           # HPP
-    "5.2.1", "5.2.2", "5.2.3", "5.2.4", "5.2.5", "5.2.6", "5.2.7", "5.2.8", "5.2.9", "5.2.10", "5.2.11",  # Beban Usaha
-    "6.1", "6.2", "6.3", "6.4", "6.5", "6.6",                       # Non-Usaha
-    "1.1.1", "1.1.2", "1.1.3", "1.1.4", "1.1.5", "1.1.6", "1.1.7", "1.1.8",  # Aset Lancar
-    "1.2.1", "1.2.2", "1.2.3", "1.2.4", "1.2.5", "1.2.6", "1.2.7", "1.2.8", "1.2.9",  # Aset Tetap
-    "2.1.1", "2.1.2", "2.1.3", "2.1.4", "2.1.5",                  # Kewajiban Pendek
-    "2.2.1", "2.2.2", "2.2.3",                                   # Kewajiban Panjang
-    "3.1.1", "3.1.2", "3.1.3", "3.1.4", "3.1.5"                   # Ekuitas
+    "4.1.1", "4.1.2", "4.1.3", "4.1.4", "4.1.5", "4.1.6", "4.1.7",
+    "5.1.1", "5.1.2", "5.1.3", "5.1.4", "5.1.5", "5.1.6",
+    "5.2.1", "5.2.2", "5.2.3", "5.2.4", "5.2.5", "5.2.6", "5.2.7", "5.2.8", "5.2.9", "5.2.10", "5.2.11",
+    "6.1", "6.2", "6.3", "6.4", "6.5", "6.6",
+    "1.1.1", "1.1.2", "1.1.3", "1.1.4", "1.1.5", "1.1.6", "1.1.7", "1.1.8",
+    "1.2.1", "1.2.2", "1.2.3", "1.2.4", "1.2.5", "1.2.6", "1.2.7", "1.2.8", "1.2.9",
+    "2.1.1", "2.1.2", "2.1.3", "2.1.4", "2.1.5",
+    "2.2.1", "2.2.2", "2.2.3",
+    "3.1.1", "3.1.2", "3.1.3", "3.1.4", "3.1.5"
 ]
 
 nama_akun = [
@@ -94,7 +94,6 @@ tipe = (
     ["Kredit"] * 5              # Ekuitas
 )
 
-# Pastikan panjangnya sama
 assert len(kode_akun) == len(nama_akun) == len(posisi) == len(tipe), "Jumlah elemen pada daftar akun tidak sama."
 
 # Buat DataFrame daftar akun
@@ -104,57 +103,23 @@ daftar_akun = pd.DataFrame({
     "Posisi": posisi,
     "Tipe": tipe
 })
+
 with st.expander("📚 Daftar Akun Standar SISKEUDES"):
     st.dataframe(daftar_akun, use_container_width=True)
 
-# === FORM INPUT TRANSAKSI ===
-st.subheader("✍️ Input Transaksi Jurnal Harian")
-with st.form("form_transaksi"):
-    tanggal = st.date_input("Tanggal Transaksi", datetime.today())
-    nama_akun = st.selectbox("Pilih Nama Akun", daftar_akun["Nama Akun"])
-    kode_akun = daftar_akun.loc[daftar_akun["Nama Akun"] == nama_akun, "Kode Akun"].values[0]
-    posisi_akun = daftar_akun.loc[daftar_akun["Nama Akun"] == nama_akun, "Tipe"].values[0]
+# LEMBAR PENGESAHAN
+st.markdown("""
+    <br><br><br>
+    <table width='100%' style='text-align:center;'>
+        <tr><td><b>Disusun oleh</b></td><td><b>Disetujui oleh</b></td></tr>
+        <tr><td><br><br><br></td><td><br><br><br></td></tr>
+        <tr><td><u>{}</u><br>Bendahara</td><td><u>{}</u><br>Direktur/Pimpinan</td></tr>
+        <tr><td colspan='2'><br><br></td></tr>
+        <tr><td><b>Mengetahui</b></td><td><b>Mengetahui</b></td></tr>
+        <tr><td><br><br><br></td><td><br><br><br></td></tr>
+        <tr><td><u>{}</u><br>Kepala Desa</td><td><u>{}</u><br>Ketua BPD</td></tr>
+    </table>
+    <br><br>
+""".format(bendahara, direktur, kepala_desa, ketua_bpd), unsafe_allow_html=True)
 
-    nominal = st.number_input("Nominal Transaksi", min_value=0.0, step=1000.0, format="%.2f")
-    keterangan = st.text_input("Keterangan")
-    bukti = st.text_input("Nomor / Bukti Transaksi")
-    submitted = st.form_submit_button("Tambah Transaksi")
-
-    if submitted and nominal > 0:
-        debit = nominal if posisi_akun == "Debit" else 0.0
-        kredit = nominal if posisi_akun == "Kredit" else 0.0
-        new_row = pd.DataFrame([[tanggal, kode_akun, nama_akun, debit, kredit, keterangan, bukti]],
-                                columns=["Tanggal", "Kode Akun", "Nama Akun", "Debit", "Kredit", "Keterangan", "Bukti"])
-        st.session_state[key_gl] = pd.concat([st.session_state[key_gl], new_row], ignore_index=True)
-        st.success("Transaksi berhasil ditambahkan!")
-
-# === TABEL JURNAL HARIAN ===
-st.subheader("📒 Tabel Buku Besar / Jurnal Harian")
-df_gl = st.session_state[key_gl]
-
-# HAPUS PER BARIS
-for idx in df_gl.index:
-    col1, col2, col3 = st.columns([10, 1, 1])
-    with col1:
-        st.write(df_gl.loc[idx])
-    with col2:
-        if st.button("🗑️", key=f"hapus_{idx}"):
-            df_gl = df_gl.drop(idx).reset_index(drop=True)
-            st.session_state[key_gl] = df_gl
-            st.experimental_rerun()
-            break
-
-# TAMPILKAN TABEL AKHIR
-st.dataframe(df_gl, use_container_width=True)
-
-# DOWNLOAD EXCEL
-def convert_df_to_excel(df):
-    output = BytesIO()
-    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-        df.to_excel(writer, index=False, sheet_name="Jurnal Harian")
-    return output.getvalue()
-
-excel_data = convert_df_to_excel(df_gl)
-st.download_button("⬇️ Download Jurnal ke Excel", data=excel_data, file_name="jurnal_harian.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-
-# Catatan: Laporan otomatis Laba Rugi, Neraca, Arus Kas akan dilanjutkan
+st.success("✅ Struktur akun anti-error berhasil dimuat. Siap lanjut ke laporan otomatis Laba Rugi, Neraca, dan Arus Kas.")
