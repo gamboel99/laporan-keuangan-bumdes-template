@@ -17,7 +17,6 @@ desa = st.sidebar.text_input("Nama Desa", "Keling")
 lembaga = st.sidebar.selectbox("Nama Lembaga", ["BUMDes", "TPK", "LPMD", "Karang Taruna", "Posyandu", "TSBD", "Pokmas"])
 nama_bumdes = st.sidebar.text_input("Nama Unit", "Buwana Raharja")
 tahun = st.sidebar.number_input("Tahun Laporan", 2025, step=1)
-bulan_filter = st.sidebar.selectbox("Filter Bulan", ["Semua"] + list(range(1, 13)))
 
 # === PEJABAT UNTUK PENGESAHAN ===
 st.sidebar.markdown("---")
@@ -102,9 +101,7 @@ with st.form("form_input"):
 
 # === TABEL JURNAL & FITUR HAPUS ===
 st.markdown("### 📋 Tabel Jurnal Transaksi")
-if bulan_filter != "Semua":
-    df_gl = df_gl[df_gl["Tanggal"].str.startswith(f"{tahun}-{int(bulan_filter):02d}")]
-
+df_gl = st.session_state[key_gl]
 if not df_gl.empty:
     st.dataframe(df_gl, use_container_width=True)
     hapus = st.number_input("Hapus transaksi ke (baris)", min_value=1, max_value=len(df_gl), step=1)
@@ -119,9 +116,6 @@ tabs = st.tabs(["📊 Laba Rugi", "📑 Neraca", "💸 Arus Kas", "📦 Unduh PD
 
 # === PERHITUNGAN OTOMATIS ===
 df = st.session_state[key_gl]
-if bulan_filter != "Semua":
-    df = df[df["Tanggal"].str.startswith(f"{tahun}-{int(bulan_filter):02d}")]
-
 if not df.empty:
     pd_pendapatan = df[df["Nama Akun"].isin(pedoman_akun[pedoman_akun["Posisi"] == "Pendapatan"]["Nama Akun"])]
     pd_beban = df[df["Nama Akun"].isin(pedoman_akun[pedoman_akun["Posisi"] == "Beban"]["Nama Akun"])]
@@ -134,53 +128,67 @@ if not df.empty:
 
     with tabs[0]:
         st.subheader("📊 Laporan Laba Rugi")
-        st.table({"Pendapatan": [pd_pendapatan["Kredit"].sum()], "Beban": [pd_beban["Debit"].sum()], "Laba Bersih": [laba]})
+        laba_table = pd.DataFrame({
+            "Pendapatan": [pd_pendapatan["Kredit"].sum()],
+            "Beban": [pd_beban["Debit"].sum()],
+            "Laba Bersih": [laba]
+        })
+        st.table(laba_table)
 
     with tabs[1]:
         st.subheader("📑 Neraca")
-        st.table({
+        neraca_table = pd.DataFrame({
             "Aset": [pd_aset["Debit"].sum()],
             "Kewajiban": [pd_kewajiban["Kredit"].sum()],
             "Ekuitas": [pd_ekuitas["Kredit"].sum()],
             "Saldo Akhir": [kas]
         })
+        st.table(neraca_table)
 
     with tabs[2]:
         st.subheader("💸 Arus Kas")
-        st.table({
+        kas_table = pd.DataFrame({
             "Kas Masuk": [df["Debit"].sum()],
             "Kas Keluar": [df["Kredit"].sum()],
             "Saldo Kas": [df["Debit"].sum() - df["Kredit"].sum()]
         })
+        st.table(kas_table)
 
     with tabs[3]:
         pdf = FPDF()
         pdf.add_page()
         pdf.set_font("Arial", size=12)
-        pdf.cell(200, 10, txt=f"Laporan Keuangan {lembaga} {nama_bumdes} Desa {desa}", ln=True, align="C")
-        pdf.cell(200, 10, txt=f"Tahun: {tahun}", ln=True, align="C")
+        pdf.cell(200, 10, txt=f"Laporan Keuangan {lembaga} {nama_bumdes} Tahun {tahun}", ln=1, align='C')
         pdf.ln(10)
-
-        for index, row in df.iterrows():
-            pdf.cell(200, 10, txt=f"{row['Tanggal']} | {row['Nama Akun']} | D: {row['Debit']} | K: {row['Kredit']}", ln=True)
+        pdf.cell(200, 10, txt=f"Laba Bersih: Rp {laba:,.2f}", ln=2)
+        pdf.cell(200, 10, txt=f"Total Aset: Rp {pd_aset['Debit'].sum():,.2f}", ln=3)
+        pdf.cell(200, 10, txt=f"Saldo Kas: Rp {kas:,.2f}", ln=4)
 
         pdf_output = BytesIO()
         pdf.output(pdf_output)
-        st.download_button(label="📥 Unduh PDF", data=pdf_output.getvalue(), file_name="laporan_keuangan.pdf")
+        pdf_output.seek(0)
+
+        st.download_button(
+            label="📥 Unduh PDF Laporan",
+            data=pdf_output,
+            file_name="laporan_keuangan.pdf",
+            mime="application/pdf"
+        )
+
 else:
     st.warning("📭 Belum ada transaksi, laporan belum tersedia.")
 
 # === LEMBAR PENGESAHAN ===
-st.markdown(f"""
+st.markdown("""
     <br><br><br><hr>
     <h5 style='text-align:center;'>LEMBAR PENGESAHAN</h5>
     <table width='100%' style='text-align:center;'>
         <tr><td><b>Disusun oleh</b></td><td><b>Disetujui oleh</b></td></tr>
         <tr><td><br><br><br></td><td><br><br><br></td></tr>
-        <tr><td><u>{bendahara}</u><br>Bendahara</td><td><u>{direktur}</u><br>Pimpinan Lembaga</td></tr>
+        <tr><td><u>{}</u><br>Bendahara</td><td><u>{}</u><br>Pimpinan Lembaga</td></tr>
         <tr><td colspan='2'><br><br></td></tr>
         <tr><td><b>Mengetahui</b></td><td><b>Mengetahui</b></td></tr>
         <tr><td><br><br><br></td><td><br><br><br></td></tr>
-        <tr><td><u>{kepala_desa}</u><br>Kepala Desa</td><td><u>{ketua_bpd}</u><br>Ketua BPD</td></tr>
+        <tr><td><u>{}</u><br>Kepala Desa</td><td><u>{}</u><br>Ketua BPD</td></tr>
     </table>
-""", unsafe_allow_html=True)
+""".format(bendahara, direktur, kepala_desa, ketua_bpd), unsafe_allow_html=True)
