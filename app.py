@@ -40,45 +40,44 @@ with col3:
     if os.path.exists("logo_bumdes.png"):
         st.image("logo_bumdes.png", width=80)
 
-# ========= PEDOMAN AKUN =========
-def default_pedoman():
-    return pd.DataFrame({
-        "Nama Akun": [
-            "Penjualan Produk", "Pendapatan Sewa", "Pendapatan Lainnya",
-            "Beban Operasional", "Beban Administrasi", "Gaji & Tunjangan", "Pajak",
-            "Kas", "Bank", "Piutang", "Utang", "Modal Awal", "Penambahan Modal", "Prive", "Laba Ditahan", "Laba Tahun Berjalan"
-        ],
-        "Kategori": [
-            "Pendapatan", "Pendapatan", "Pendapatan",
-            "Beban Operasional", "Beban Administrasi", "Beban Administrasi", "Beban Administrasi",
-            "Aset", "Aset", "Aset", "Kewajiban", "Ekuitas", "Ekuitas", "Ekuitas", "Ekuitas", "Ekuitas"
-        ],
-        "Tipe": [
-            "Kredit", "Kredit", "Kredit",
-            "Debit", "Debit", "Debit", "Debit",
-            "Debit", "Debit", "Debit", "Kredit", "Kredit", "Kredit", "Debit", "Kredit", "Kredit"
-        ]
-    })
+# ========= PEDOMAN AKUN TERSTRUKTUR =========
+pedoman_data = {
+    "Nama Akun": [
+        # Pendapatan Usaha
+        "Penjualan Barang Dagang", "Pendapatan Sewa", "Pendapatan Jasa", 
+        # Beban Operasional
+        "Pembelian Barang Dagang", "Gaji & Tunjangan", "Penyusutan", 
+        # Beban Administrasi
+        "Beban ATK", "Beban Listrik", "Beban Lainnya", 
+        # Ekuitas
+        "Modal Awal", "Laba Ditahan", "Laba Tahun Berjalan", "Prive", 
+        # Aset
+        "Kas", "Bank", "Piutang", 
+        # Kewajiban
+        "Utang",
+    ],
+    "Posisi": [
+        "Pendapatan Usaha", "Pendapatan Usaha", "Pendapatan Usaha",
+        "Beban Operasional", "Beban Operasional", "Beban Operasional",
+        "Beban Administrasi", "Beban Administrasi", "Beban Administrasi",
+        "Ekuitas", "Ekuitas", "Ekuitas", "Ekuitas",
+        "Aset", "Aset", "Aset",
+        "Kewajiban"
+    ],
+    "Tipe": [
+        "Kredit", "Kredit", "Kredit",
+        "Debit", "Debit", "Debit",
+        "Debit", "Debit", "Debit",
+        "Kredit", "Kredit", "Kredit", "Debit",
+        "Debit", "Debit", "Debit",
+        "Kredit"
+    ]
+}
+pedoman_akun = pd.DataFrame(pedoman_data)
 
-if "pedoman_akun" not in st.session_state:
-    st.session_state["pedoman_akun"] = default_pedoman()
+with st.expander("📚 Pedoman Akun Terstruktur (Laporan Laba Rugi, Neraca, Ekuitas)"):
+    st.dataframe(pedoman_akun, use_container_width=True)
 
-st.markdown("### 📘 Pedoman Daftar Akun")
-st.dataframe(st.session_state["pedoman_akun"], use_container_width=True)
-
-# ========= TAMBAH AKUN MANUAL =========
-st.markdown("### ➕ Tambah Akun Manual")
-with st.form("form_tambah_akun"):
-    nama_baru = st.text_input("Nama Akun Baru")
-    kategori_baru = st.selectbox("Kategori", ["Pendapatan", "Beban Operasional", "Beban Administrasi", "Aset", "Kewajiban", "Ekuitas"])
-    tipe_baru = st.selectbox("Tipe", ["Debit", "Kredit"])
-    tambah_akun = st.form_submit_button("Tambah Akun")
-
-    if tambah_akun and nama_baru:
-        akun_baru = pd.DataFrame({"Nama Akun": [nama_baru], "Kategori": [kategori_baru], "Tipe": [tipe_baru]})
-        st.session_state["pedoman_akun"] = pd.concat([st.session_state["pedoman_akun"], akun_baru], ignore_index=True)
-        st.success(f"Akun '{nama_baru}' berhasil ditambahkan.")
-
-# Selanjutnya akan disambung dengan: Input Transaksi, Jurnal, Laporan Keuangan
-# Laporan akan menggunakan kategori di atas sebagai struktur dasar
-# Ekspansi laporan dan export PDF akan dibuat setelah ini
+# ========== LANGKAH SELANJUTNYA ==========
+st.success("✅ Struktur akun standar laporan keuangan telah diterapkan.")
+st.info("Langkah berikutnya: integrasikan perhitungan & tampilan laporan Laba Rugi, Neraca, Arus Kas, dan Ekuitas secara otomatis berdasarkan struktur akun ini.")
