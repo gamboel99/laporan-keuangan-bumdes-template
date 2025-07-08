@@ -7,6 +7,7 @@ import pandas as pd
 import os
 from io import BytesIO
 from datetime import datetime
+from fpdf import FPDF
 
 st.set_page_config(page_title="Laporan Keuangan BUMDes", layout="wide")
 
@@ -16,6 +17,7 @@ desa = st.sidebar.text_input("Nama Desa", "Keling")
 lembaga = st.sidebar.selectbox("Nama Lembaga", ["BUMDes", "TPK", "LPMD", "Karang Taruna", "Posyandu", "TSBD", "Pokmas"])
 nama_bumdes = st.sidebar.text_input("Nama Unit", "Buwana Raharja")
 tahun = st.sidebar.number_input("Tahun Laporan", 2025, step=1)
+bulan_filter = st.sidebar.selectbox("Filter Bulan", ["Semua"] + list(range(1, 13)))
 
 # === PEJABAT UNTUK PENGESAHAN ===
 st.sidebar.markdown("---")
@@ -100,7 +102,9 @@ with st.form("form_input"):
 
 # === TABEL JURNAL & FITUR HAPUS ===
 st.markdown("### 📋 Tabel Jurnal Transaksi")
-df_gl = st.session_state[key_gl]
+if bulan_filter != "Semua":
+    df_gl = df_gl[df_gl["Tanggal"].str.startswith(f"{tahun}-{int(bulan_filter):02d}")]
+
 if not df_gl.empty:
     st.dataframe(df_gl, use_container_width=True)
     hapus = st.number_input("Hapus transaksi ke (baris)", min_value=1, max_value=len(df_gl), step=1)
@@ -111,10 +115,13 @@ else:
     st.info("Belum ada transaksi yang dicatat.")
 
 # === NAVIGASI LAPORAN ===
-tabs = st.tabs(["📊 Laba Rugi", "📑 Neraca", "💸 Arus Kas", "📦 Unduh Semua"])
+tabs = st.tabs(["📊 Laba Rugi", "📑 Neraca", "💸 Arus Kas", "📦 Unduh PDF"])
 
 # === PERHITUNGAN OTOMATIS ===
 df = st.session_state[key_gl]
+if bulan_filter != "Semua":
+    df = df[df["Tanggal"].str.startswith(f"{tahun}-{int(bulan_filter):02d}")]
+
 if not df.empty:
     pd_pendapatan = df[df["Nama Akun"].isin(pedoman_akun[pedoman_akun["Posisi"] == "Pendapatan"]["Nama Akun"])]
     pd_beban = df[df["Nama Akun"].isin(pedoman_akun[pedoman_akun["Posisi"] == "Beban"]["Nama Akun"])]
@@ -127,11 +134,7 @@ if not df.empty:
 
     with tabs[0]:
         st.subheader("📊 Laporan Laba Rugi")
-        st.table({
-            "Pendapatan": [pd_pendapatan["Kredit"].sum()],
-            "Beban": [pd_beban["Debit"].sum()],
-            "Laba Bersih": [laba]
-        })
+        st.table({"Pendapatan": [pd_pendapatan["Kredit"].sum()], "Beban": [pd_beban["Debit"].sum()], "Laba Bersih": [laba]})
 
     with tabs[1]:
         st.subheader("📑 Neraca")
@@ -151,21 +154,33 @@ if not df.empty:
         })
 
     with tabs[3]:
-        st.download_button("📥 Unduh Jurnal Excel", data=df.to_csv(index=False).encode(), file_name="jurnal.csv")
+        pdf = FPDF()
+        pdf.add_page()
+        pdf.set_font("Arial", size=12)
+        pdf.cell(200, 10, txt=f"Laporan Keuangan {lembaga} {nama_bumdes} Desa {desa}", ln=True, align="C")
+        pdf.cell(200, 10, txt=f"Tahun: {tahun}", ln=True, align="C")
+        pdf.ln(10)
+
+        for index, row in df.iterrows():
+            pdf.cell(200, 10, txt=f"{row['Tanggal']} | {row['Nama Akun']} | D: {row['Debit']} | K: {row['Kredit']}", ln=True)
+
+        pdf_output = BytesIO()
+        pdf.output(pdf_output)
+        st.download_button(label="📥 Unduh PDF", data=pdf_output.getvalue(), file_name="laporan_keuangan.pdf")
 else:
     st.warning("📭 Belum ada transaksi, laporan belum tersedia.")
 
 # === LEMBAR PENGESAHAN ===
-st.markdown("""
+st.markdown(f"""
     <br><br><br><hr>
     <h5 style='text-align:center;'>LEMBAR PENGESAHAN</h5>
     <table width='100%' style='text-align:center;'>
         <tr><td><b>Disusun oleh</b></td><td><b>Disetujui oleh</b></td></tr>
         <tr><td><br><br><br></td><td><br><br><br></td></tr>
-        <tr><td><u>{}</u><br>Bendahara</td><td><u>{}</u><br>Pimpinan Lembaga</td></tr>
+        <tr><td><u>{bendahara}</u><br>Bendahara</td><td><u>{direktur}</u><br>Pimpinan Lembaga</td></tr>
         <tr><td colspan='2'><br><br></td></tr>
         <tr><td><b>Mengetahui</b></td><td><b>Mengetahui</b></td></tr>
         <tr><td><br><br><br></td><td><br><br><br></td></tr>
-        <tr><td><u>{}</u><br>Kepala Desa</td><td><u>{}</u><br>Ketua BPD</td></tr>
+        <tr><td><u>{kepala_desa}</u><br>Kepala Desa</td><td><u>{ketua_bpd}</u><br>Ketua BPD</td></tr>
     </table>
-""".format(bendahara, direktur, kepala_desa, ketua_bpd), unsafe_allow_html=True)
+""", unsafe_allow_html=True)
