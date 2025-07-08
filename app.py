@@ -12,36 +12,78 @@ if "buku_besar" not in st.session_state:
 
 # === DAFTAR AKUN ===
 kode_akun = [
+    # Pendapatan
     "4.1.1", "4.1.2", "4.1.3", "4.1.4", "4.1.5", "4.1.6", "4.1.7",
+    # HPP
     "5.1.1", "5.1.2", "5.1.3", "5.1.4", "5.1.5", "5.1.6",
+    # Beban Usaha
     "5.2.1", "5.2.2", "5.2.3", "5.2.4", "5.2.5", "5.2.6", "5.2.7", "5.2.8", "5.2.9", "5.2.10", "5.2.11",
+    # Non-Usaha
     "6.1", "6.2", "6.3", "6.4", "6.5", "6.6",
+    # Aset Lancar
     "1.1.1", "1.1.2", "1.1.3", "1.1.4", "1.1.5", "1.1.6", "1.1.7", "1.1.8",
+    # Aset Tetap
     "1.2.1", "1.2.2", "1.2.3", "1.2.4", "1.2.5", "1.2.6", "1.2.7", "1.2.8", "1.2.9",
+    # Kewajiban Pendek
     "2.1.1", "2.1.2", "2.1.3", "2.1.4", "2.1.5",
+    # Kewajiban Panjang
     "2.2.1", "2.2.2", "2.2.3",
+    # Ekuitas
     "3.1.1", "3.1.2", "3.1.3", "3.1.4", "3.1.5"
 ]
 
 nama_akun = [
-    "Penjualan Barang Dagang", "Pendapatan Jasa", "Pendapatan Sewa Aset", "Pendapatan Simpan Pinjam", "Pendapatan Usaha Tani", "Pendapatan Wisata", "Pendapatan Lainnya",
-    "Pembelian Barang Dagang", "Beban Produksi", "Beban Pemeliharaan Usaha", "Beban Penyusutan Aset Usaha", "Bahan Baku / Operasional", "Beban Lainnya",
-    "Gaji dan Tunjangan", "Listrik, Air, Komunikasi", "Transportasi", "Administrasi & Umum", "Sewa Tempat", "Perlengkapan", "Penyusutan Aset Tetap", "Penyuluhan", "Promosi & Publikasi", "Operasional Wisata", "CSR / Kegiatan Desa",
+    # Pendapatan
+    "Penjualan Barang Dagang", "Pendapatan Jasa", "Pendapatan Sewa Aset", "Pendapatan Simpan Pinjam",
+    "Pendapatan Usaha Tani", "Pendapatan Wisata", "Pendapatan Lainnya",
+    # HPP
+    "Pembelian Barang Dagang", "Beban Produksi", "Beban Pemeliharaan Usaha", "Beban Penyusutan Aset Usaha",
+    "Bahan Baku / Operasional", "Beban Lainnya",
+    # Beban Usaha
+    "Gaji dan Tunjangan", "Listrik, Air, Komunikasi", "Transportasi", "Administrasi & Umum", "Sewa Tempat",
+    "Perlengkapan", "Penyusutan Aset Tetap", "Penyuluhan", "Promosi & Publikasi", "Operasional Wisata", "CSR / Kegiatan Desa",
+    # Non-Usaha
     "Pendapatan Bunga", "Pendapatan Investasi", "Pendapatan Lain-lain", "Beban Bunga", "Kerugian Penjualan Aset", "Pajak",
+    # Aset Lancar
     "Kas", "Bank", "Piutang Usaha", "Persediaan Dagang", "Persediaan Bahan Baku", "Uang Muka", "Investasi Pendek", "Pendapatan Diterima Di Muka",
+    # Aset Tetap
     "Tanah", "Bangunan", "Peralatan", "Kendaraan", "Inventaris", "Aset Tetap Lainnya", "Akumulasi Penyusutan", "Investasi Panjang", "Aset Lain-lain",
+    # Kewajiban Pendek
     "Utang Usaha", "Utang Gaji", "Utang Pajak", "Pendapatan Diterima Di Muka", "Utang Lain-lain",
+    # Kewajiban Panjang
     "Pinjaman Bank", "Pinjaman Pemerintah", "Utang Pihak Ketiga",
+    # Ekuitas
     "Modal Desa", "Modal Pihak Ketiga", "Saldo Laba Ditahan", "Laba Tahun Berjalan", "Cadangan Sosial / Investasi"
 ]
 
-posisi = [
-    "Pendapatan"]*7 + ["HPP"]*6 + ["Beban Usaha"]*11 + ["Non-Usaha"]*6 + ["Aset Lancar"]*8 + ["Aset Tetap"]*9 + ["Kewajiban Pendek"]*5 + ["Kewajiban Panjang"]*3 + ["Ekuitas"]*5
+posisi = (
+    ["Pendapatan"] * 7 +
+    ["HPP"] * 6 +
+    ["Beban Usaha"] * 11 +
+    ["Non-Usaha"] * 6 +
+    ["Aset Lancar"] * 8 +
+    ["Aset Tetap"] * 9 +
+    ["Kewajiban Pendek"] * 5 +
+    ["Kewajiban Panjang"] * 3 +
+    ["Ekuitas"] * 5
+)
 
-tipe = ["Kredit"]*7 + ["Debit"]*6 + ["Debit"]*11 + ["Kredit"]*3 + ["Debit"]*8 + ["Debit"]*9 + ["Kredit"]*5 + ["Kredit"]*3 + ["Kredit"]*5
+tipe = (
+    ["Kredit"] * 7 +     # Pendapatan
+    ["Debit"] * 6 +      # HPP
+    ["Debit"] * 11 +     # Beban Usaha
+    ["Kredit"] * 3 + ["Debit"] * 3 +     # Non-Usaha
+    ["Debit"] * 8 +      # Aset Lancar
+    ["Debit"] * 6 + ["Kredit"] * 1 + ["Debit"] * 2,  # Aset Tetap
+    ["Kredit"] * 5 +     # Kewajiban Pendek
+    ["Kredit"] * 3 +     # Kewajiban Panjang
+    ["Kredit"] * 5       # Ekuitas
+)
 
-assert len(kode_akun) == len(nama_akun) == len(posisi) == len(tipe), "Jumlah elemen pada daftar akun tidak sama."
+# VALIDASI
+assert len(kode_akun) == len(nama_akun) == len(posisi) == len(tipe), "❌ Jumlah elemen akun tidak sama!"
 
+# BUAT DATAFRAME
 daftar_akun = pd.DataFrame({
     "Kode Akun": kode_akun,
     "Nama Akun": nama_akun,
