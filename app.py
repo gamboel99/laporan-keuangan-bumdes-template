@@ -1,18 +1,18 @@
 import streamlit as st
 import pandas as pd
-import os
 from datetime import datetime
-from io import BytesIO
+import os
 
 st.set_page_config(page_title="Laporan Keuangan Lembaga Desa", layout="wide")
 
-# === SIDEBAR ===
+# === PILIHAN MULTI LEMBAGA DAN DESA ===
 st.sidebar.title("🔰 Pilih Unit Lembaga")
 lembaga = st.sidebar.selectbox("Lembaga", ["BUMDes", "TPK", "LPMD", "Karang Taruna", "Posyandu", "TSBD", "Pokmas"])
 desa = st.sidebar.text_input("Nama Desa", "Keling")
 nama_bumdes = st.sidebar.text_input("Nama Lembaga", "Buwana Raharja")
 tahun = st.sidebar.number_input("Tahun Laporan", 2025, step=1)
 
+# === PEJABAT UNTUK PENGESAHAN ===
 st.sidebar.markdown("---")
 st.sidebar.subheader("Pejabat Tanda Tangan")
 bendahara = st.sidebar.text_input("Nama Bendahara", "Siti Aminah")
@@ -27,75 +27,60 @@ st.markdown(f"""
     <hr>
 """, unsafe_allow_html=True)
 
-# === LOGO ===
-col_logo1, col_logo2 = st.columns([1, 6])
-with col_logo1:
-    if os.path.exists("logo_pemdes.png"):
-        st.image("logo_pemdes.png", width=80)
-with col_logo2:
-    if os.path.exists("logo_bumdes.png"):
-        st.image("logo_bumdes.png", width=80)
-
-# === DAFTAR PEDOMAN AKUN (TIDAK BERDAMPAK SISTEM, HANYA PANDUAN) ===
+# === PEDOMAN AKUN ===
 pedoman_akun = pd.DataFrame({
-    "Kode Akun": ["4.1.1", "5.2.1", "1.1.1", "2.1.1", "3.1.1"],
-    "Nama Akun": ["Pendapatan Usaha Dagang", "Gaji dan Tunjangan", "Kas", "Utang Usaha", "Modal Desa"],
-    "Posisi": ["Pendapatan", "Beban Usaha", "Aset Lancar", "Kewajiban", "Ekuitas"],
-    "Tipe": ["Kredit", "Debit", "Debit", "Kredit", "Kredit"]
+    "Nama Akun": [
+        "Penjualan Barang Dagang", "Pendapatan Jasa", "Pendapatan Sewa Aset", "Pendapatan Simpan Pinjam", "Pendapatan Usaha Tani", "Pendapatan Wisata", "Pendapatan Lainnya",
+        "Pembelian Barang Dagang", "Beban Produksi", "Beban Pemeliharaan Usaha", "Beban Penyusutan Aset Usaha", "Bahan Baku / Operasional", "Beban Lainnya",
+        "Gaji dan Tunjangan", "Listrik, Air, Komunikasi", "Transportasi", "Administrasi & Umum", "Sewa Tempat", "Perlengkapan", "Penyusutan Aset Tetap", "Penyuluhan", "Promosi & Publikasi", "Operasional Wisata", "CSR / Kegiatan Desa",
+        "Pendapatan Bunga", "Pendapatan Investasi", "Pendapatan Lain-lain", "Beban Bunga", "Kerugian Penjualan Aset", "Pajak",
+        "Kas", "Bank", "Piutang Usaha", "Persediaan Dagang", "Persediaan Bahan Baku", "Uang Muka", "Investasi Pendek", "Pendapatan Diterima Di Muka",
+        "Tanah", "Bangunan", "Peralatan", "Kendaraan", "Inventaris", "Aset Tetap Lainnya", "Akumulasi Penyusutan", "Investasi Panjang", "Aset Lain-lain",
+        "Utang Usaha", "Utang Gaji", "Utang Pajak", "Pendapatan Diterima Di Muka", "Utang Lain-lain",
+        "Pinjaman Bank", "Pinjaman Pemerintah", "Utang Pihak Ketiga",
+        "Modal Desa", "Modal Pihak Ketiga", "Saldo Laba Ditahan", "Laba Tahun Berjalan", "Cadangan Sosial / Investasi"
+    ],
+    "Posisi": [
+        "Kredit"]*7 + ["Debit"]*6 + ["Debit"]*11 + ["Kredit"]*3 + ["Debit"]*8 + ["Debit"]*9 + ["Kredit"]*5 + ["Kredit"]*3 + ["Kredit"]*5
 })
-with st.expander("📚 Pedoman Daftar Akun (Hanya Panduan)"):
+
+with st.expander("📚 Pedoman Akun - Posisi Debit/Kredit"):
     st.dataframe(pedoman_akun, use_container_width=True)
 
-# === INISIALISASI JURNAL UMUM ===
-st.title(f"📘 Jurnal Harian / Buku Besar ({lembaga})")
+# === INISIALISASI ===
 key_gl = f"gl_{lembaga}_{desa}_{tahun}"
 if key_gl not in st.session_state:
-    st.session_state[key_gl] = pd.DataFrame(columns=["Tanggal", "Kode Akun", "Nama Akun", "Debit", "Kredit", "Keterangan", "Bukti"])
+    st.session_state[key_gl] = pd.DataFrame(columns=["Tanggal", "Nama Akun", "Debit", "Kredit", "Keterangan"])
 
 df_gl = st.session_state[key_gl]
 
-# === INPUT TRANSAKSI ===
-st.subheader("➕ Input Transaksi Baru")
-with st.form("form_input"):
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        tanggal = st.date_input("Tanggal", datetime.now())
-        akun_nama = st.selectbox("Pilih Nama Akun", pedoman_akun["Nama Akun"])
-    with col2:
-        keterangan = st.text_input("Keterangan")
-        bukti = st.file_uploader("Upload Bukti Transaksi (opsional)", type=["jpg", "jpeg", "png", "pdf"])
-    with col3:
-        tipe = pedoman_akun[pedoman_akun["Nama Akun"] == akun_nama]["Tipe"].values[0]
-        if tipe == "Debit":
-            debit = st.number_input("Jumlah (Debit)", 0.0)
-            kredit = 0.0
-        else:
-            kredit = st.number_input("Jumlah (Kredit)", 0.0)
-            debit = 0.0
+# === FORM INPUT JURNAL ===
+with st.form("Input Transaksi"):
+    tanggal = st.date_input("Tanggal", value=datetime.today())
+    akun_nama = st.selectbox("Pilih Nama Akun", pedoman_akun["Nama Akun"])
+    posisi = pedoman_akun.loc[pedoman_akun["Nama Akun"] == akun_nama, "Posisi"].values[0]
+    jumlah = st.number_input("Jumlah (Rp)", 0.0, step=1000.0)
+    keterangan = st.text_input("Keterangan")
+    submit = st.form_submit_button("➕ Tambah Transaksi")
 
-    submitted = st.form_submit_button("Simpan")
-    if submitted:
-        kode = pedoman_akun[pedoman_akun["Nama Akun"] == akun_nama]["Kode Akun"].values[0]
-        new_data = pd.DataFrame([[tanggal, kode, akun_nama, debit, kredit, keterangan, bukti.name if bukti else ""]],
-                                 columns=df_gl.columns)
-        st.session_state[key_gl] = pd.concat([df_gl, new_data], ignore_index=True)
-        st.success("✅ Transaksi berhasil ditambahkan!")
+    if submit:
+        debit = jumlah if posisi == "Debit" else 0.0
+        kredit = jumlah if posisi == "Kredit" else 0.0
+        new_row = pd.DataFrame([[tanggal, akun_nama, debit, kredit, keterangan]],
+                                columns=["Tanggal", "Nama Akun", "Debit", "Kredit", "Keterangan"])
+        st.session_state[key_gl] = pd.concat([st.session_state[key_gl], new_row], ignore_index=True)
+        st.experimental_rerun()
 
-# === TAMPILKAN JURNAL ===
-st.subheader("📄 Daftar Transaksi (Jurnal Harian)")
-df_gl = st.session_state[key_gl]
-
+# === TABEL JURNAL ===
+st.markdown("### 📖 Jurnal Harian (General Ledger)")
 if not df_gl.empty:
-    for i in df_gl.index:
-        col1, col2 = st.columns([10, 1])
-        with col1:
-            st.markdown(f"{i+1}. {df_gl.loc[i, 'Tanggal']} | {df_gl.loc[i, 'Kode Akun']} - {df_gl.loc[i, 'Nama Akun']} | Debit: Rp{df_gl.loc[i, 'Debit']:,.0f} | Kredit: Rp{df_gl.loc[i, 'Kredit']:,.0f} | {df_gl.loc[i, 'Keterangan']}")
-        with col2:
-            if st.button("❌", key=f"hapus_{i}"):
-                st.session_state[key_gl] = df_gl.drop(i).reset_index(drop=True)
-                st.experimental_rerun()
+    for i, row in df_gl.iterrows():
+        st.write(f"{row['Tanggal']} | {row['Nama Akun']} | Rp {row['Debit']:,.0f} (D) | Rp {row['Kredit']:,.0f} (K) | {row['Keterangan']}")
+        if st.button(f"Hapus", key=f"hapus_{i}"):
+            st.session_state[key_gl] = df_gl.drop(index=i).reset_index(drop=True)
+            st.experimental_rerun()
 else:
-    st.warning("Belum ada transaksi.")
+    st.info("Belum ada transaksi dimasukkan.")
 
 # === LEMBAR PENGESAHAN ===
 st.markdown("""
@@ -112,4 +97,4 @@ st.markdown("""
     <br><br>
 """.format(bendahara, direktur, kepala_desa, ketua_bpd), unsafe_allow_html=True)
 
-st.success("✅ Semua sistem input dan tabel jurnal berhasil dimuat. Siap lanjut ke laporan otomatis.")
+st.success("✅ Siap ditambahkan: Laba Rugi, Neraca, dan Arus Kas otomatis dalam format tabel bergaris. Konfirmasi untuk lanjut.")
