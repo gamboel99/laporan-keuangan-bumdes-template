@@ -41,45 +41,44 @@ with col3:
         st.image("logo_bumdes.png", width=80)
 
 # ========= PEDOMAN AKUN =========
-if "pedoman_akun" not in st.session_state:
-    st.session_state["pedoman_akun"] = pd.DataFrame({
+def default_pedoman():
+    return pd.DataFrame({
         "Nama Akun": [
-            "Penjualan Barang Dagang", "Pendapatan Sewa", "Pendapatan Jasa", "Pendapatan Lainnya",
-            "Pembelian Barang Dagang", "Beban Produksi", "Gaji & Tunjangan", "ATK", "Transportasi", "Penyusutan",
-            "Kas", "Bank", "Piutang Dagang", "Utang Usaha", "Modal Awal", "Laba Ditahan", "Prive", "Laba Tahun Berjalan"
+            "Penjualan Produk", "Pendapatan Sewa", "Pendapatan Lainnya",
+            "Beban Operasional", "Beban Administrasi", "Gaji & Tunjangan", "Pajak",
+            "Kas", "Bank", "Piutang", "Utang", "Modal Awal", "Penambahan Modal", "Prive", "Laba Ditahan", "Laba Tahun Berjalan"
         ],
         "Kategori": [
-            "Pendapatan Usaha", "Pendapatan Usaha", "Pendapatan Usaha", "Pendapatan Usaha",
-            "Beban Operasional", "Beban Operasional", "Beban Operasional", "Beban Administrasi", "Beban Operasional", "Beban Administrasi",
-            "Kas dari Aktivitas Operasi", "Kas dari Aktivitas Operasi", "Kas dari Aktivitas Operasi", "Kas dari Aktivitas Pendanaan",
-            "Modal Awal", "Laba Tahun Berjalan", "Prive/Penambahan Modal", "Laba Tahun Berjalan"
+            "Pendapatan", "Pendapatan", "Pendapatan",
+            "Beban Operasional", "Beban Administrasi", "Beban Administrasi", "Beban Administrasi",
+            "Aset", "Aset", "Aset", "Kewajiban", "Ekuitas", "Ekuitas", "Ekuitas", "Ekuitas", "Ekuitas"
         ],
-        "Posisi": [
-            "Pendapatan"]*4 + ["Beban"]*6 + ["Aset"]*3 + ["Kewajiban"] + ["Ekuitas"]*4,
         "Tipe": [
-            "Kredit"]*4 + ["Debit"]*6 + ["Debit"]*3 + ["Kredit"] + ["Kredit"]*2 + ["Debit"] + ["Kredit"]
+            "Kredit", "Kredit", "Kredit",
+            "Debit", "Debit", "Debit", "Debit",
+            "Debit", "Debit", "Debit", "Kredit", "Kredit", "Kredit", "Debit", "Kredit", "Kredit"
+        ]
     })
 
-pedoman_akun = st.session_state["pedoman_akun"]
+if "pedoman_akun" not in st.session_state:
+    st.session_state["pedoman_akun"] = default_pedoman()
 
-with st.expander("📚 Pedoman Akun (Panduan Posisi Debit/Kredit)"):
-    st.dataframe(pedoman_akun, use_container_width=True)
+st.markdown("### 📘 Pedoman Daftar Akun")
+st.dataframe(st.session_state["pedoman_akun"], use_container_width=True)
 
-with st.expander("➕ Tambah Akun Baru"):
+# ========= TAMBAH AKUN MANUAL =========
+st.markdown("### ➕ Tambah Akun Manual")
+with st.form("form_tambah_akun"):
     nama_baru = st.text_input("Nama Akun Baru")
-    kategori_baru = st.selectbox("Kategori", sorted(pedoman_akun["Kategori"].unique().tolist() + ["(Kategori Baru)"]))
-    posisi_baru = st.selectbox("Posisi", ["Pendapatan", "Beban", "Aset", "Kewajiban", "Ekuitas"])
+    kategori_baru = st.selectbox("Kategori", ["Pendapatan", "Beban Operasional", "Beban Administrasi", "Aset", "Kewajiban", "Ekuitas"])
     tipe_baru = st.selectbox("Tipe", ["Debit", "Kredit"])
-    if st.button("Tambah Akun"):
-        st.session_state["pedoman_akun"] = pd.concat([pedoman_akun, pd.DataFrame([{
-            "Nama Akun": nama_baru,
-            "Kategori": kategori_baru,
-            "Posisi": posisi_baru,
-            "Tipe": tipe_baru
-        }])], ignore_index=True)
-        st.success("Akun berhasil ditambahkan.")
+    tambah_akun = st.form_submit_button("Tambah Akun")
 
-# ======= SISANYA TETAP DILANJUTKAN DI BAWAH =========
-# (lanjutan script jurnal transaksi, laporan keuangan, ekspor, dan pengesahan)
+    if tambah_akun and nama_baru:
+        akun_baru = pd.DataFrame({"Nama Akun": [nama_baru], "Kategori": [kategori_baru], "Tipe": [tipe_baru]})
+        st.session_state["pedoman_akun"] = pd.concat([st.session_state["pedoman_akun"], akun_baru], ignore_index=True)
+        st.success(f"Akun '{nama_baru}' berhasil ditambahkan.")
 
-# Silakan lanjutkan dari baris transaksi dan laporan sesuai struktur baru di atas
+# Selanjutnya akan disambung dengan: Input Transaksi, Jurnal, Laporan Keuangan
+# Laporan akan menggunakan kategori di atas sebagai struktur dasar
+# Ekspansi laporan dan export PDF akan dibuat setelah ini
