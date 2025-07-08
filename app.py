@@ -40,53 +40,46 @@ with st.expander("📘 Pedoman Daftar Akun (Manual)"):
 # ----------------------
 # Form Input Transaksi
 # ----------------------
-st.header("📒 Jurnal Harian / Buku Besar")
 with st.form("form_transaksi"):
-    col1, col2 = st.columns(2)
-    with col1:
-        tanggal = st.date_input("Tanggal", datetime.today())
-    with col2:
-        nama_akun = st.selectbox("Pilih Nama Akun", pedoman_akun["Nama Akun"])
-
-    posisi = pedoman_akun[pedoman_akun["Nama Akun"] == nama_akun]["Tipe"].values[0]
-
-    col3 = st.columns(1)[0]
-    if posisi == "Debit":
-        jumlah_debit = col3.number_input("Jumlah (Debit)", min_value=0.0, step=1000.0)
-        jumlah_kredit = 0.0
-    else:
-        jumlah_kredit = col3.number_input("Jumlah (Kredit)", min_value=0.0, step=1000.0)
-        jumlah_debit = 0.0
-
+    tanggal = st.date_input("Tanggal", value=datetime.date.today())
+    akun_nama = st.selectbox("Pilih Nama Akun", daftar_akun["Nama Akun"])
+    jumlah = st.number_input("Jumlah", min_value=0.0, step=1000.0, format="%.2f")
     keterangan = st.text_input("Keterangan")
 
-    submitted = st.form_submit_button("+ Tambah Transaksi")
+    submitted = st.form_submit_button("Tambah Transaksi")
     if submitted:
-        st.session_state.jurnal.append({
-            "Tanggal": tanggal.strftime("%Y-%m-%d"),
-            "Nama Akun": nama_akun,
-            "Posisi": posisi,
-            "Debit": jumlah_debit,
-            "Kredit": jumlah_kredit,
+        posisi_akun = daftar_akun.loc[daftar_akun["Nama Akun"] == akun_nama, "Tipe"].values[0]
+
+        debit = jumlah if posisi_akun == "Debit" else 0.0
+        kredit = jumlah if posisi_akun == "Kredit" else 0.0
+
+        new_row = {
+            "Tanggal": tanggal,
+            "Nama Akun": akun_nama,
+            "Posisi": posisi_akun,
+            "Debit": debit,
+            "Kredit": kredit,
             "Keterangan": keterangan
-        })
+        }
+
+        df_gl = pd.concat([df_gl, pd.DataFrame([new_row])], ignore_index=True)
         st.success("✅ Transaksi berhasil ditambahkan.")
+        st.session_state["df_gl"] = df_gl
 
 # ----------------------
 # Tabel Jurnal
 # ----------------------
-st.subheader("📑 Tabel Jurnal Harian / Buku Besar")
-df_jurnal = pd.DataFrame(st.session_state.jurnal)
+# === Tabel Jurnal Harian ===
+st.markdown("### 🧾 Tabel Jurnal Harian / Buku Besar")
+st.dataframe(df_gl.style.format({"Debit": "Rp{:,.2f}", "Kredit": "Rp{:,.2f}"}), use_container_width=True)
 
-if not df_jurnal.empty:
-    st.dataframe(df_jurnal, use_container_width=True)
-    # Fitur Hapus
-    for i, row in df_jurnal.iterrows():
-        if st.button(f"❌ Hapus {i+1}", key=f"hapus_{i}"):
-            st.session_state.jurnal.pop(i)
-            st.experimental_rerun()
-else:
-    st.warning("Belum ada transaksi.")
+# === Tombol Hapus Baris ===
+hapus_index = st.number_input("Hapus Baris ke-", min_value=0, max_value=len(df_gl)-1 if len(df_gl) > 0 else 0, step=1)
+if st.button("❌ Hapus Transaksi"):
+    if not df_gl.empty:
+        df_gl = df_gl.drop(hapus_index).reset_index(drop=True)
+        st.session_state["df_gl"] = df_gl
+        st.success(f"✅ Baris ke-{hapus_index} berhasil dihapus.")
 
 # ----------------------
 # Laporan Otomatis
