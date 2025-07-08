@@ -1,61 +1,74 @@
 import streamlit as st
 import pandas as pd
-import os
+import base64
 from datetime import datetime
+import os
+from io import BytesIO
 
 st.set_page_config(page_title="Laporan Keuangan Lembaga Desa", layout="wide")
 
-# === INISIALISASI ===
-if "buku_besar" not in st.session_state:
-    st.session_state.buku_besar = pd.DataFrame(columns=[
-        "Tanggal", "Kode Akun", "Nama Akun", "Debit", "Kredit", "Keterangan", "Bukti"])
+# === PILIHAN MULTI LEMBAGA DAN DESA ===
+st.sidebar.title("🔰 Pilih Unit Lembaga")
+lembaga = st.sidebar.selectbox("Lembaga", ["BUMDes", "TPK", "LPMD", "Karang Taruna", "Posyandu", "TSBD", "Pokmas"])
+desa = st.sidebar.text_input("Nama Desa", "Keling")
+nama_bumdes = st.sidebar.text_input("Nama Lembaga", "Buwana Raharja")
+tahun = st.sidebar.number_input("Tahun Laporan", 2025, step=1)
 
-# === DAFTAR AKUN ===
+# === PEJABAT UNTUK PENGESAHAN ===
+st.sidebar.markdown("---")
+st.sidebar.subheader("Pejabat Tanda Tangan")
+bendahara = st.sidebar.text_input("Nama Bendahara", "Siti Aminah")
+direktur = st.sidebar.text_input("Nama Ketua/Pimpinan", "Bambang Setiawan")
+kepala_desa = st.sidebar.text_input("Nama Kepala Desa", "Sugeng Riyadi")
+ketua_bpd = st.sidebar.text_input("Nama Ketua BPD", "Dwi Purnomo")
+
+# === KOP LAPORAN ===
+st.markdown(f"""
+    <h3 style='text-align:center;'>Laporan Keuangan {lembaga} {nama_bumdes} Desa {desa}</h3>
+    <h4 style='text-align:center;'>Alamat: Jl. Raya Keling, Bukaan, Keling, Kec. Kepung, Kabupaten Kediri, Jawa Timur 64293</h4>
+    <hr>
+""", unsafe_allow_html=True)
+
+# === LOGO ===
+col_logo1, col_logo2 = st.columns([1, 6])
+with col_logo1:
+    if os.path.exists("logo_pemdes.png"):
+        st.image("logo_pemdes.png", width=80)
+with col_logo2:
+    if os.path.exists("logo_bumdes.png"):
+        st.image("logo_bumdes.png", width=80)
+
+# === INISIALISASI JURNAL ===
+key_gl = f"gl_{lembaga}_{desa}_{tahun}"
+if key_gl not in st.session_state:
+    st.session_state[key_gl] = pd.DataFrame(columns=["Tanggal", "Kode Akun", "Nama Akun", "Debit", "Kredit", "Keterangan", "Bukti"])
+
+# === DAFTAR AKUN STANDAR SISKEUDES ===
 kode_akun = [
-    # Pendapatan
     "4.1.1", "4.1.2", "4.1.3", "4.1.4", "4.1.5", "4.1.6", "4.1.7",
-    # HPP
     "5.1.1", "5.1.2", "5.1.3", "5.1.4", "5.1.5", "5.1.6",
-    # Beban Usaha
     "5.2.1", "5.2.2", "5.2.3", "5.2.4", "5.2.5", "5.2.6", "5.2.7", "5.2.8", "5.2.9", "5.2.10", "5.2.11",
-    # Non-Usaha
     "6.1", "6.2", "6.3", "6.4", "6.5", "6.6",
-    # Aset Lancar
     "1.1.1", "1.1.2", "1.1.3", "1.1.4", "1.1.5", "1.1.6", "1.1.7", "1.1.8",
-    # Aset Tetap
     "1.2.1", "1.2.2", "1.2.3", "1.2.4", "1.2.5", "1.2.6", "1.2.7", "1.2.8", "1.2.9",
-    # Kewajiban Pendek
     "2.1.1", "2.1.2", "2.1.3", "2.1.4", "2.1.5",
-    # Kewajiban Panjang
     "2.2.1", "2.2.2", "2.2.3",
-    # Ekuitas
     "3.1.1", "3.1.2", "3.1.3", "3.1.4", "3.1.5"
 ]
-
 nama_akun = [
-    # Pendapatan
     "Penjualan Barang Dagang", "Pendapatan Jasa", "Pendapatan Sewa Aset", "Pendapatan Simpan Pinjam",
     "Pendapatan Usaha Tani", "Pendapatan Wisata", "Pendapatan Lainnya",
-    # HPP
     "Pembelian Barang Dagang", "Beban Produksi", "Beban Pemeliharaan Usaha", "Beban Penyusutan Aset Usaha",
     "Bahan Baku / Operasional", "Beban Lainnya",
-    # Beban Usaha
     "Gaji dan Tunjangan", "Listrik, Air, Komunikasi", "Transportasi", "Administrasi & Umum", "Sewa Tempat",
     "Perlengkapan", "Penyusutan Aset Tetap", "Penyuluhan", "Promosi & Publikasi", "Operasional Wisata", "CSR / Kegiatan Desa",
-    # Non-Usaha
     "Pendapatan Bunga", "Pendapatan Investasi", "Pendapatan Lain-lain", "Beban Bunga", "Kerugian Penjualan Aset", "Pajak",
-    # Aset Lancar
     "Kas", "Bank", "Piutang Usaha", "Persediaan Dagang", "Persediaan Bahan Baku", "Uang Muka", "Investasi Pendek", "Pendapatan Diterima Di Muka",
-    # Aset Tetap
     "Tanah", "Bangunan", "Peralatan", "Kendaraan", "Inventaris", "Aset Tetap Lainnya", "Akumulasi Penyusutan", "Investasi Panjang", "Aset Lain-lain",
-    # Kewajiban Pendek
     "Utang Usaha", "Utang Gaji", "Utang Pajak", "Pendapatan Diterima Di Muka", "Utang Lain-lain",
-    # Kewajiban Panjang
     "Pinjaman Bank", "Pinjaman Pemerintah", "Utang Pihak Ketiga",
-    # Ekuitas
     "Modal Desa", "Modal Pihak Ketiga", "Saldo Laba Ditahan", "Laba Tahun Berjalan", "Cadangan Sosial / Investasi"
 ]
-
 posisi = (
     ["Pendapatan"] * 7 +
     ["HPP"] * 6 +
@@ -67,69 +80,36 @@ posisi = (
     ["Kewajiban Panjang"] * 3 +
     ["Ekuitas"] * 5
 )
-
 tipe = (
     ["Kredit"] * 7 +     # Pendapatan
     ["Debit"] * 6 +      # HPP
     ["Debit"] * 11 +     # Beban Usaha
     ["Kredit"] * 3 + ["Debit"] * 3 +     # Non-Usaha
     ["Debit"] * 8 +      # Aset Lancar
-    ["Debit"] * 6 + ["Kredit"] * 1 + ["Debit"] * 2,  # Aset Tetap
+    ["Debit"] * 6 + ["Kredit"] * 1 + ["Debit"] * 2 +  # Aset Tetap
     ["Kredit"] * 5 +     # Kewajiban Pendek
     ["Kredit"] * 3 +     # Kewajiban Panjang
     ["Kredit"] * 5       # Ekuitas
 )
+assert len(kode_akun) == len(nama_akun) == len(posisi) == len(tipe), "Jumlah elemen akun tidak sama!"
+daftar_akun = pd.DataFrame({"Kode Akun": kode_akun, "Nama Akun": nama_akun, "Posisi": posisi, "Tipe": tipe})
 
-# VALIDASI
-assert len(kode_akun) == len(nama_akun) == len(posisi) == len(tipe), "❌ Jumlah elemen akun tidak sama!"
+with st.expander("📚 Daftar Akun Standar SISKEUDES"):
+    st.dataframe(daftar_akun, use_container_width=True)
 
-# BUAT DATAFRAME
-daftar_akun = pd.DataFrame({
-    "Kode Akun": kode_akun,
-    "Nama Akun": nama_akun,
-    "Posisi": posisi,
-    "Tipe": tipe
-})
+# LEMBAR PENGESAHAN
+st.markdown("""
+    <br><br><br>
+    <table width='100%' style='text-align:center;'>
+        <tr><td><b>Disusun oleh</b></td><td><b>Disetujui oleh</b></td></tr>
+        <tr><td><br><br><br></td><td><br><br><br></td></tr>
+        <tr><td><u>{}</u><br>Bendahara</td><td><u>{}</u><br>Direktur/Pimpinan</td></tr>
+        <tr><td colspan='2'><br><br></td></tr>
+        <tr><td><b>Mengetahui</b></td><td><b>Mengetahui</b></td></tr>
+        <tr><td><br><br><br></td><td><br><br><br></td></tr>
+        <tr><td><u>{}</u><br>Kepala Desa</td><td><u>{}</u><br>Ketua BPD</td></tr>
+    </table>
+    <br><br>
+""".format(bendahara, direktur, kepala_desa, ketua_bpd), unsafe_allow_html=True)
 
-st.title("📌 Input Jurnal Harian")
-
-with st.form("form_input_transaksi"):
-    tanggal = st.date_input("Tanggal Transaksi", value=datetime.today())
-    akun_nama = st.selectbox("Pilih Nama Akun", daftar_akun["Nama Akun"])
-    akun_data = daftar_akun[daftar_akun["Nama Akun"] == akun_nama].iloc[0]
-    akun_kode = akun_data["Kode Akun"]
-    akun_tipe = akun_data["Tipe"]
-
-    nominal = st.number_input(f"Nominal ({akun_tipe})", min_value=0.0)
-    keterangan = st.text_input("Keterangan")
-    bukti = st.file_uploader("Upload Bukti Transaksi", type=["jpg", "png", "pdf"])
-
-    submitted = st.form_submit_button("Tambah Transaksi")
-    if submitted:
-        new_row = {
-            "Tanggal": tanggal,
-            "Kode Akun": akun_kode,
-            "Nama Akun": akun_nama,
-            "Debit": nominal if akun_tipe == "Debit" else 0,
-            "Kredit": nominal if akun_tipe == "Kredit" else 0,
-            "Keterangan": keterangan,
-            "Bukti": bukti.name if bukti else ""
-        }
-        st.session_state.buku_besar = pd.concat([
-            st.session_state.buku_besar,
-            pd.DataFrame([new_row])
-        ], ignore_index=True)
-        st.success("✅ Transaksi berhasil ditambahkan!")
-
-# === TAMPILKAN BUKU BESAR ===
-st.subheader("📒 Buku Besar")
-st.dataframe(st.session_state.buku_besar, use_container_width=True)
-
-# === FITUR HAPUS PER TRANSAKSI ===
-if not st.session_state.buku_besar.empty:
-    st.subheader("🗑️ Hapus Transaksi")
-    hapus_index = st.number_input("Masukkan nomor indeks transaksi yang ingin dihapus (mulai dari 0)", min_value=0, max_value=len(st.session_state.buku_besar)-1, step=1)
-    if st.button("Hapus Transaksi"):
-        st.session_state.buku_besar.drop(index=hapus_index, inplace=True)
-        st.session_state.buku_besar.reset_index(drop=True, inplace=True)
-        st.success("✅ Transaksi berhasil dihapus.")
+st.success("✅ Struktur akun valid dan siap digunakan. Siap lanjut laporan otomatis.")
