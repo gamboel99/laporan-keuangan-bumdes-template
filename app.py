@@ -4,138 +4,136 @@ from datetime import datetime
 
 st.set_page_config(layout="wide")
 
-# === Sidebar: Identitas ===
-st.sidebar.header("📌 Pilih Unit Lembaga")
-lembaga = st.sidebar.selectbox("Lembaga", ["BUMDes", "TPK", "LPMD", "Karang Taruna", "Posyandu", "TSBD", "Pokmas"])
-desa = st.sidebar.text_input("Nama Desa", "Keling")
-nama_bumdes = st.sidebar.text_input("Nama Lembaga", "Buwana Raharja")
-tahun = st.sidebar.number_input("Tahun Laporan", value=2025)
-
-# === Sidebar: Pejabat ===
-st.sidebar.header("🖊️ Pejabat Tanda Tangan")
-bendahara = st.sidebar.text_input("Nama Bendahara", "Siti Aminah")
-direktur = st.sidebar.text_input("Nama Ketua/Pimpinan", "Bambang Setiawan")
-kepala_desa = st.sidebar.text_input("Nama Kepala Desa", "Sugeng Riyadi")
-ketua_bpd = st.sidebar.text_input("Nama Ketua BPD", "Dwi Purnomo")
-
-# === Header ===
-st.markdown(f"""
-<h3 style='text-align:center;'>Laporan Keuangan {lembaga} {nama_bumdes} Desa {desa}</h3>
-<h4 style='text-align:center;'>Alamat: Jl. Raya Keling, Bukaan, Keling, Kec. Kepung, Kabupaten Kediri, Jawa Timur 64293</h4>
-<hr>
-""", unsafe_allow_html=True)
-
-# === Pedoman Daftar Akun ===
-pedoman_data = {
-    "Nama Akun": [
-        "Penjualan Barang", "Pendapatan Jasa", "Pendapatan Sewa", "Pendapatan Lainnya",
-        "Pembelian Barang", "Beban Operasional", "Gaji", "Listrik", "Transportasi", "Penyusutan",
-        "Pendapatan Bunga", "Pendapatan Investasi", "Kas", "Bank", "Piutang", "Persediaan",
-        "Tanah", "Peralatan", "Utang Usaha", "Utang Pajak", "Modal Awal", "Laba Tahun Berjalan"
-    ],
-    "Posisi": [
-        "Pendapatan", "Pendapatan", "Pendapatan", "Pendapatan",
-        "Beban", "Beban", "Beban", "Beban", "Beban", "Beban",
-        "Pendapatan", "Pendapatan", "Aset", "Aset", "Aset", "Aset",
-        "Aset", "Aset", "Kewajiban", "Kewajiban", "Ekuitas", "Ekuitas"
-    ],
-    "Tipe": [
-        "Kredit", "Kredit", "Kredit", "Kredit",
-        "Debit", "Debit", "Debit", "Debit", "Debit", "Debit",
-        "Kredit", "Kredit", "Debit", "Debit", "Debit", "Debit",
-        "Debit", "Debit", "Kredit", "Kredit", "Kredit", "Kredit"
-    ]
-}
-pedoman_akun = pd.DataFrame(pedoman_data)
-
-with st.expander("📖 Pedoman Daftar Akun (Manual)"):
-    st.dataframe(pedoman_akun, use_container_width=True)
-
-# === Inisialisasi Session State ===
+# Inisialisasi session state
 if "jurnal" not in st.session_state:
     st.session_state.jurnal = []
 
-# === Tab Navigasi ===
-tab1, tab2, tab3, tab4 = st.tabs(["📘 Jurnal Harian", "📊 Laba Rugi", "📉 Neraca", "💧 Arus Kas"])
+# ----------------------
+# Header dan Identitas
+# ----------------------
+st.title("Laporan Keuangan BUMDes Buwana Raharja Desa Keling")
+st.markdown("""
+**Alamat:** Jl. Raya Keling, Bukaan, Keling, Kec. Kepung, Kabupaten Kediri, Jawa Timur 64293
+""")
 
-# === 📘 JURNAL HARIAN ===
-with tab1:
-    st.subheader("📘 Jurnal Harian / Buku Besar")
+# ----------------------
+# Pedoman Akun
+# ----------------------
+pedoman_data = {
+    "Nama Akun": [
+        "Modal Awal", "Kas", "Bank", "Piutang Usaha", "Persediaan Barang Dagang", "Peralatan", "Aset Tetap Lainnya",
+        "Hutang Usaha", "Pendapatan Usaha", "Pendapatan Non-Usaha", "HPP", "Beban Gaji", "Beban Listrik", "Beban Sewa",
+        "Beban Penyusutan", "Beban Operasional Lainnya", "Laba Ditahan"
+    ],
+    "Tipe": [
+        "Kredit", "Debit", "Debit", "Debit", "Debit", "Debit", "Debit",
+        "Kredit", "Kredit", "Kredit", "Debit", "Debit", "Debit", "Debit",
+        "Debit", "Debit", "Kredit"
+    ]
+}
 
-    with st.form("form_input"):
-        col1, col2 = st.columns(2)
-        with col1:
-            tanggal = st.date_input("Tanggal", datetime.today())
-            nama_akun = st.selectbox("Pilih Nama Akun", pedoman_akun["Nama Akun"])
-        with col2:
-# Menentukan posisi akun otomatis (Debit/Kredit)
-        posisi = pedoman_akun[pedoman_akun["Nama Akun"] == nama_akun]["Tipe"].values[0]
+pedoman_akun = pd.DataFrame(pedoman_data)
 
-# Input jumlah berdasarkan posisi
-if posisi == "Debit":
-    jumlah_debit = st.number_input("Jumlah (Debit)", min_value=0.0, step=1000.0)
-    jumlah_kredit = 0.0
-else:
-    jumlah_kredit = st.number_input("Jumlah (Kredit)", min_value=0.0, step=1000.0)
-    jumlah_debit = 0.0
-        keterangan = st.text_input("Keterangan")
-        simpan = st.form_submit_button("➕ Tambah Transaksi")
+with st.expander("📘 Pedoman Daftar Akun (Manual)"):
+    st.dataframe(pedoman_akun, use_container_width=True)
 
-        if simpan:
-    st.session_state.jurnal.append({
-        "Tanggal": tanggal.strftime("%Y-%m-%d"),
-        "Nama Akun": nama_akun,
-        "Posisi": posisi,
-        "Debit": jumlah_debit,
-        "Kredit": jumlah_kredit,
-        "Keterangan": keterangan
-    })
-    st.success("Transaksi berhasil ditambahkan.")
+# ----------------------
+# Form Input Transaksi
+# ----------------------
+st.header("📒 Jurnal Harian / Buku Besar")
+with st.form("form_transaksi"):
+    col1, col2 = st.columns(2)
+    with col1:
+        tanggal = st.date_input("Tanggal", datetime.today())
+    with col2:
+        nama_akun = st.selectbox("Pilih Nama Akun", pedoman_akun["Nama Akun"])
 
+    posisi = pedoman_akun[pedoman_akun["Nama Akun"] == nama_akun]["Tipe"].values[0]
 
-    # Tabel Transaksi
-    df_jurnal = pd.DataFrame(st.session_state.jurnal)
-    if not df_jurnal.empty:
-        st.dataframe(df_jurnal, use_container_width=True)
-        hapus_index = st.number_input("Hapus Transaksi ke-", min_value=0, max_value=len(df_jurnal)-1, step=1)
-        if st.button("🗑️ Hapus"):
-            st.session_state.jurnal.pop(hapus_index)
+    col3 = st.columns(1)[0]
+    if posisi == "Debit":
+        jumlah_debit = col3.number_input("Jumlah (Debit)", min_value=0.0, step=1000.0)
+        jumlah_kredit = 0.0
+    else:
+        jumlah_kredit = col3.number_input("Jumlah (Kredit)", min_value=0.0, step=1000.0)
+        jumlah_debit = 0.0
+
+    keterangan = st.text_input("Keterangan")
+
+    submitted = st.form_submit_button("+ Tambah Transaksi")
+    if submitted:
+        st.session_state.jurnal.append({
+            "Tanggal": tanggal.strftime("%Y-%m-%d"),
+            "Nama Akun": nama_akun,
+            "Posisi": posisi,
+            "Debit": jumlah_debit,
+            "Kredit": jumlah_kredit,
+            "Keterangan": keterangan
+        })
+        st.success("✅ Transaksi berhasil ditambahkan.")
+
+# ----------------------
+# Tabel Jurnal
+# ----------------------
+st.subheader("📑 Tabel Jurnal Harian / Buku Besar")
+df_jurnal = pd.DataFrame(st.session_state.jurnal)
+
+if not df_jurnal.empty:
+    st.dataframe(df_jurnal, use_container_width=True)
+    # Fitur Hapus
+    for i, row in df_jurnal.iterrows():
+        if st.button(f"❌ Hapus {i+1}", key=f"hapus_{i}"):
+            st.session_state.jurnal.pop(i)
             st.experimental_rerun()
+else:
+    st.warning("Belum ada transaksi.")
 
-# === 📊 LABA RUGI ===
-with tab2:
-    st.subheader("📊 Laporan Laba Rugi")
-    if not df_jurnal.empty:
-        pendapatan = df_jurnal[df_jurnal["Posisi"] == "Kredit"]["Kredit"].sum()
-        beban = df_jurnal[df_jurnal["Posisi"] == "Debit"]["Debit"].sum()
-        laba = pendapatan - beban
-        lr_df = pd.DataFrame({
-            "Uraian": ["Total Pendapatan", "Total Beban", "Laba Bersih"],
-            "Jumlah": [pendapatan, beban, laba]
-        })
-        st.table(lr_df)
+# ----------------------
+# Laporan Otomatis
+# ----------------------
+st.header("📊 Laporan Keuangan Otomatis")
+tabs = st.tabs(["Laba Rugi", "Neraca", "Arus Kas"])
 
-# === 📉 NERACA ===
-with tab3:
-    st.subheader("📉 Neraca")
-    if not df_jurnal.empty:
-        aset = df_jurnal[df_jurnal["Posisi"] == "Debit"]["Debit"].sum()
-        kewajiban_ekuitas = df_jurnal[df_jurnal["Posisi"] == "Kredit"]["Kredit"].sum()
-        neraca_df = pd.DataFrame({
-            "Kelompok": ["Aset", "Kewajiban + Ekuitas"],
-            "Jumlah": [aset, kewajiban_ekuitas]
-        })
-        st.table(neraca_df)
+# --- LABA RUGI ---
+with tabs[0]:
+    st.subheader("📈 Laporan Laba Rugi")
+    df = df_jurnal.copy()
+    df["Debit"] = pd.to_numeric(df["Debit"], errors='coerce').fillna(0)
+    df["Kredit"] = pd.to_numeric(df["Kredit"], errors='coerce').fillna(0)
 
-# === 💧 ARUS KAS ===
-with tab4:
-    st.subheader("💧 Arus Kas")
-    if not df_jurnal.empty:
-        kas_masuk = df_jurnal[(df_jurnal["Nama Akun"] == "Kas") & (df_jurnal["Posisi"] == "Debit")]["Debit"].sum()
-        kas_keluar = df_jurnal[(df_jurnal["Nama Akun"] == "Kas") & (df_jurnal["Posisi"] == "Kredit")]["Kredit"].sum()
-        saldo = kas_masuk - kas_keluar
-        arus_df = pd.DataFrame({
-            "Uraian": ["Kas Masuk", "Kas Keluar", "Saldo Akhir"],
-            "Jumlah": [kas_masuk, kas_keluar, saldo]
-        })
-        st.table(arus_df)
+    pendapatan = df[(df["Posisi"] == "Kredit") & (df["Nama Akun"].str.contains("Pendapatan"))]["Kredit"].sum()
+    hpp = df[df["Nama Akun"] == "HPP"]["Debit"].sum()
+    beban = df[(df["Posisi"] == "Debit") & (df["Nama Akun"].str.contains("Beban"))]["Debit"].sum()
+    laba_bersih = pendapatan - hpp - beban
+
+    laba_rugi = pd.DataFrame({
+        "Keterangan": ["Pendapatan", "HPP", "Beban", "Laba Bersih"],
+        "Jumlah": [pendapatan, hpp, beban, laba_bersih]
+    })
+    st.table(laba_rugi.set_index("Keterangan"))
+
+# --- NERACA ---
+with tabs[1]:
+    st.subheader("📒 Neraca")
+    aset = df[df["Posisi"] == "Debit"]["Debit"].sum()
+    kewajiban = df[df["Nama Akun"] == "Hutang Usaha"]["Kredit"].sum()
+    ekuitas = df[df["Nama Akun"] == "Modal Awal"]["Kredit"].sum() + laba_bersih
+
+    neraca = pd.DataFrame({
+        "Keterangan": ["Aset", "Kewajiban", "Ekuitas"],
+        "Jumlah": [aset, kewajiban, ekuitas]
+    })
+    st.table(neraca.set_index("Keterangan"))
+
+# --- ARUS KAS ---
+with tabs[2]:
+    st.subheader("💸 Laporan Arus Kas")
+    kas_masuk = df[df["Posisi"] == "Debit"]["Debit"].sum()
+    kas_keluar = df[df["Posisi"] == "Kredit"]["Kredit"].sum()
+    saldo_kas = kas_masuk - kas_keluar
+
+    arus_kas = pd.DataFrame({
+        "Keterangan": ["Kas Masuk", "Kas Keluar", "Saldo Kas"],
+        "Jumlah": [kas_masuk, kas_keluar, saldo_kas]
+    })
+    st.table(arus_kas.set_index("Keterangan"))
