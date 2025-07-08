@@ -7,3 +7,4 @@ pandas
 xhtml2pdf
 matplotlib
 xlsxwriter
+fpdf
